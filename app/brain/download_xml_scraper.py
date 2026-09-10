@@ -111,16 +111,35 @@ async def _auto_login_with_browser(browser, ruc: str) -> bool:
         print("   Botón Aceptar presionado (vía JS). Esperando redirección...")
         
         try:
-            await page.wait_for_url("**/MenuInternet.htm*", timeout=25000)
-            print("✅ Auto-Login exitoso! Sesión generada.")
+            # Intento inicial corto para ver si carga directo o sale la pantalla de código
+            try:
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=5000)
+                print("✅ Auto-Login exitoso! Sesión generada.")
+            except Exception:
+                # Revisar si apareció la nueva pantalla de autenticación "Continuar sin código"
+                if await page.locator("#btnWithOutCode").count() > 0:
+                    print("   [Workaround] Pantalla 'Método de Autenticación' detectada. Seleccionando 'Continuar sin código'...")
+                    await page.click("#btnWithOutCode")
+                
+                # Esperar al menú real
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=20000)
+                print("✅ Auto-Login exitoso! Sesión generada.")
+                
         except Exception as e:
             print(f"⚠️ Timeout esperando MenuInternet.htm: {e}")
             print(f"   URL actual: {page.url}")
             print(f"   Título: {await page.title()}")
             
-            # WORKAROUND: If stuck on the OAuth callback page (which has "Bienvenido a SUNAT" and an invisible form),
-            # force submit it via JS. Headless Chrome sometimes blocks auto-submitting forms across domains.
-            if "api-seguridad.sunat.gob.pe" in page.url and "code=" in page.url:
+            # WORKAROUND: Fallbacks en caso siga trabado
+            if await page.locator("#btnWithOutCode").count() > 0:
+                print("   [Workaround] Pantalla 'Método de Autenticación' aún presente. Intentando click...")
+                try:
+                    await page.click("#btnWithOutCode")
+                    await page.wait_for_url("**/MenuInternet.htm*", timeout=15000)
+                    print("✅ Auto-Login exitoso (después del workaround btnWithOutCode)!")
+                except Exception as ex:
+                    print(f"   [Workaround] Falló el click: {ex}")
+            elif "api-seguridad.sunat.gob.pe" in page.url and "code=" in page.url:
                 print("   [Workaround] Detectada pantalla intermedia de SUNAT. Forzando submit del formulario oculto...")
                 try:
                     await page.evaluate("document.forms[0].submit()")

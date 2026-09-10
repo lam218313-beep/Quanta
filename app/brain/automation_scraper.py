@@ -25,7 +25,7 @@ async def run(ruc: str):
     async with async_playwright() as p:
         # Launch browser in HEADLESS mode for Railway compatibility
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
+        context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         page = await context.new_page()
 
         print(f"🚀 Opening SUNAT Login Page for RUC {ruc}...")
@@ -59,9 +59,18 @@ async def run(ruc: str):
         # In headless mode (Railway/Production), we cannot wait for a user to click.
         # We just wait for the login to redirect to the Menu URL, and save the base cookies.
         try:
-            await page.wait_for_url("**/MenuInternet.htm*", timeout=15000)
-            print("✅ Login successful! Redirected to menu.")
-            found_session = True
+            try:
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=5000)
+                print("✅ Login successful! Redirected to menu.")
+                found_session = True
+            except Exception:
+                if await page.locator("#btnWithOutCode").count() > 0:
+                    print("   [Workaround] Authentication screen detected. Clicking 'Continuar sin código'...")
+                    await page.click("#btnWithOutCode")
+                
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=15000)
+                print("✅ Login successful! Redirected to menu.")
+                found_session = True
         except Exception as e:
             print(f"⚠️ Did not reach menu URL in time, or CAPTCHA required: {e}")
             found_session = False
