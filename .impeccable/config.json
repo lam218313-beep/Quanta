@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/src/App.jsx"
+        ],
+        "createdAt": "2026-09-18T20:43:23.327Z",
+        "reason": "toast notification left-border color-codes severity (success/danger/warning/info), not a decorative card accent - standard, functional pattern used by every toast library"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "app/brain/templates/financial_report_header.html"
+        ],
+        "createdAt": "2026-09-18T23:32:08.987Z",
+        "reason": "print PDF header (Playwright page-margin template for an A4 report), not a screen UI - print type scale (9-13px) matches the rest of the report template intentionally"
+      }
+    ]
+  }
+}
