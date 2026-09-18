@@ -535,8 +535,7 @@ function App() {
         {/* Sidebar */}
         <aside className="sidebar animate-slide-up">
           <div className="brand">
-            <div className="brand-icon">Q</div>
-            <h1>Quanta</h1>
+            <img src="/logo-quanta.png" alt="Quanta Contadores" className="brand-logo-img" />
           </div>
 
           {/* Main tab navigation */}

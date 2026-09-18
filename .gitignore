@@ -49,6 +49,9 @@ cuentas del plan contable actual.TXT
 *.png
 *.jpg
 *.jpeg
+!frontend/public/*.png
+!frontend/src/assets/*.png
+!landing/public/*.png
 
 # Scripts de prueba y scratch
 test_*.py
@@ -109,6 +112,9 @@ cuentas del plan contable actual.TXT
 *.png
 *.jpg
 *.jpeg
+!frontend/public/*.png
+!frontend/src/assets/*.png
+!landing/public/*.png
 
 # Scripts de prueba y scratch
 test_*.py
