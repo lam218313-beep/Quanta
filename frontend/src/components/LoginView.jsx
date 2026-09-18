@@ -198,10 +198,9 @@ export default function LoginView({ onLoginSuccess }) {
                     <IdCard className="input-icon-new" size={18} />
                     <input
                       type="text"
-                      placeholder="20600373065"
+                      placeholder="Correo o usuario"
                       value={ruc}
-                      onChange={(e) => setRuc(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                      inputMode="numeric"
+                      onChange={(e) => setRuc(e.target.value)}
                       required
                     />
                   </div>
