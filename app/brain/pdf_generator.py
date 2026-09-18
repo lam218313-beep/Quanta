@@ -1,5 +1,6 @@
 import os
 import asyncio
+import base64
 from typing import Dict, Any
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
@@ -7,6 +8,18 @@ from lxml import etree
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+
+_LOGO_PATH = os.path.join(TEMPLATE_DIR, "assets", "logo-quanta.png")
+_logo_base64_cache = None
+
+
+def _get_logo_base64() -> str:
+    """Read+cache the Quanta logo as base64 so it embeds directly in the PDF HTML."""
+    global _logo_base64_cache
+    if _logo_base64_cache is None:
+        with open(_LOGO_PATH, "rb") as f:
+            _logo_base64_cache = base64.b64encode(f.read()).decode("ascii")
+    return _logo_base64_cache
 
 async def _html_to_pdf(html_content: str, output_path: str, format_type: str = 'A4'):
     """Convierte HTML a PDF usando Playwright."""
@@ -198,4 +211,15 @@ async def generate_client_report_pdf(report_data: Dict[str, Any], output_path: s
     """Generates a financial/SIRE report PDF for a client."""
     template = env.get_template("report_template.html")
     html_content = template.render(data=report_data)
+    await _html_to_pdf(html_content, output_path)
+
+
+async def generate_financial_report_pdf(report_data: Dict[str, Any], output_path: str):
+    """
+    Generates the full financial report PDF (mirrors the Dashboard page):
+    KPIs, distribution by comprobante type, balance, top clients/suppliers,
+    recent movements and incomplete-processing alerts.
+    """
+    template = env.get_template("financial_report_template.html")
+    html_content = template.render(logo_base64=_get_logo_base64(), **report_data)
     await _html_to_pdf(html_content, output_path)

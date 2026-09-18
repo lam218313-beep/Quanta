@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe Financiero</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    font-size: 12px;
+  }
+  .page { padding: 28px 34px; }
+
+  h1, h2, h3 { font-family: 'Outfit', sans-serif; margin: 0; }
+
+  /* Header */
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #ede9fe;
+    padding-bottom: 16px;
+    margin-bottom: 22px;
+  }
+  .report-header img { height: 46px; width: auto; }
+  .report-title { text-align: right; }
+  .report-title h1 { font-size: 20px; font-weight: 800; color: #0f172a; }
+  .report-title p { margin: 3px 0 0; color: #64748b; font-size: 11px; }
+
+  .client-banner {
+    background: linear-gradient(135deg, #f5f3ff, #eff6ff);
+    border: 1px solid #ede9fe;
+    border-radius: 10px;
+    padding: 12px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .client-banner h2 { font-size: 15px; color: #4c1d95; font-weight: 700; }
+  .client-banner .ruc { color: #6d28d9; font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .client-banner .periodo {
+    background: #7c3aed; color: white; font-weight: 700; font-size: 11px;
+    padding: 5px 14px; border-radius: 999px;
+  }
+
+  /* Sections */
+  .section { margin-bottom: 26px; }
+  .section-head { margin-bottom: 10px; }
+  .section-head h3 { font-size: 13px; color: #0f172a; font-weight: 700; }
+  .section-head p { margin: 2px 0 0; color: #94a3b8; font-size: 10px; line-height: 1.4; }
+
+  /* KPI cards */
+  .kpi-grid { display: flex; gap: 12px; }
+  .kpi-card {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    border-top: 3px solid #7c3aed;
+  }
+  .kpi-card.green { border-top-color: #10b981; }
+  .kpi-card.red { border-top-color: #ef4444; }
+  .kpi-card.amber { border-top-color: #f59e0b; }
+  .kpi-card.blue { border-top-color: #3b82f6; }
+  .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; font-weight: 700; }
+  .kpi-value { font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 6px; }
+  .kpi-caption { font-size: 9.5px; color: #94a3b8; margin-top: 4px; line-height: 1.35; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  th {
+    background: #f8fafc; color: #64748b; text-align: left; font-weight: 700;
+    text-transform: uppercase; font-size: 9px; letter-spacing: 0.03em;
+    padding: 8px 10px; border-bottom: 2px solid #e2e8f0;
+  }
+  td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+  .badge.venta { background: #d1fae5; color: #047857; }
+  .badge.compra { background: #fee2e2; color: #b91c1c; }
+  .badge.completo { background: #d1fae5; color: #047857; }
+  .badge.pendiente { background: #f1f5f9; color: #64748b; }
+  .badge.parcial { background: #fef3c7; color: #b45309; }
+  .badge.error { background: #fee2e2; color: #b91c1c; }
+
+  /* Two-column layout */
+  .two-col { display: flex; gap: 18px; }
+  .two-col > div { flex: 1; }
+
+  /* Balance bars */
+  .balance-row { margin-bottom: 10px; }
+  .balance-row .label-row { display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px; }
+  .balance-row .label-row .name { color: #64748b; font-weight: 600; }
+  .balance-row .label-row .amount { font-weight: 700; color: #0f172a; }
+  .balance-track { width: 100%; height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+  .balance-fill { height: 100%; border-radius: 4px; }
+
+  .empty-note {
+    text-align: center; padding: 18px; color: #10b981; background: #f0fdf4;
+    border-radius: 8px; font-size: 11px; font-weight: 600;
+  }
+
+  .report-footer {
+    margin-top: 30px; padding-top: 14px; border-top: 1px solid #e2e8f0;
+    display: flex; justify-content: space-between; color: #94a3b8; font-size: 9px;
+  }
+
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="report-header">
+      <img src="data:image/png;base64,{{ logo_base64 }}" alt="Quanta Contadores">
+      <div class="report-title">
+        <h1>Informe Financiero</h1>
+        <p>Generado el {{ fecha_generacion }}</p>
+      </div>
+    </div>
+
+    <div class="client-banner">
+      <div>
+        <h2>{{ cliente.razon_social }}</h2>
+        <div class="ruc">RUC {{ cliente.ruc }}</div>
+      </div>
+      <div class="periodo">{{ periodo_label }}</div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="section">
+      <div class="section-head">
+        <h3>Resumen del Periodo</h3>
+        <p>Indicadores clave calculados sobre los comprobantes de compras y ventas registrados en el periodo.</p>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <div class="kpi-label">Ventas Totales</div>
+          <div class="kpi-value">{{ kpis.total_ventas_fmt }}</div>
+          <div class="kpi-caption">{{ kpis.docs_ventas }} comprobante(s) de venta en el periodo.</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">Compras Totales</div>
+          <div class="kpi-value">{{ kpis.total_compras_fmt }}</div>
+          <div class="kpi-caption">{{ kpis.docs_compras }} comprobante(s) de compra en el periodo.</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">IGV Resultante</div>
+          <div class="kpi-value">{{ kpis.igv_fmt }}</div>
+          <div class="kpi-caption">{{ 'IGV a pagar al fisco en el periodo.' if kpis.igv_a_pagar else 'Saldo a favor del contribuyente.' }}</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Procesamiento Completo</div>
+          <div class="kpi-value">{{ kpis.tasa_procesamiento }}%</div>
+          <div class="kpi-caption">{{ kpis.procesados_completos }} de {{ kpis.total_docs }} documentos ya clasificados por IA.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col section">
+      <div>
+        <div class="section-head">
+          <h3>Compras por Tipo de Comprobante</h3>
+          <p>Distribución del monto total de compras según el tipo de documento (Factura, Boleta, Notas).</p>
+        </div>
+        {% if distribucion %}
+        <table>
+          <thead><tr><th>Tipo</th><th class="text-right">Monto</th><th class="text-right">%</th></tr></thead>
+          <tbody>
+            {% for d in distribucion %}
+            <tr>
+              <td>{{ d.label }}</td>
+              <td class="text-right">{{ d.monto_fmt }}</td>
+              <td class="text-right">{{ d.pct }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-note">Sin compras registradas en el periodo.</div>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="section-head">
+          <h3>Balance del Periodo</h3>
+          <p>Comparación entre ventas, compras y la utilidad bruta resultante.</p>
+        </div>
+        {% for b in balance %}
+        <div class="balance-row">
+          <div class="label-row"><span class="name">{{ b.label }}</span><span class="amount">{{ b.monto_fmt }}</span></div>
+          <div class="balance-track"><div class="balance-fill" style="width:{{ b.pct }}%; background:{{ b.color }};"></div></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="two-col section">
+      <div>
+        <div class="section-head">
+          <h3>Top 5 Clientes</h3>
+          <p>Entidades con mayor volumen de ventas facturadas en el periodo.</p>
+        </div>
+        {% if top_clientes %}
+        <table>
+          <thead><tr><th>#</th><th>Cliente</th><th class="text-right">Monto</th></tr></thead>
+          <tbody>
+            {% for c in top_clientes %}
+            <tr><td>{{ loop.index }}</td><td>{{ c.nombre }}</td><td class="text-right">{{ c.monto_fmt }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-note">Sin ventas registradas.</div>
+        {% endif %}
+      </div>
+      <div>
+        <div class="section-head">
+          <h3>Top 5 Proveedores</h3>
+          <p>Entidades con mayor volumen de compras registradas en el periodo.</p>
+        </div>
+        {% if top_proveedores %}
+        <table>
+          <thead><tr><th>#</th><th>Proveedor</th><th class="text-right">Monto</th></tr></thead>
+          <tbody>
+            {% for p in top_proveedores %}
+            <tr><td>{{ loop.index }}</td><td>{{ p.nombre }}</td><td class="text-right">{{ p.monto_fmt }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-note">Sin compras registradas.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="section page-break">
+      <div class="section-head">
+        <h3>Últimos Movimientos Registrados</h3>
+        <p>Detalle de los comprobantes de compras y ventas más recientes del periodo (máx. 25).</p>
+      </div>
+      {% if movimientos %}
+      <table>
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Entidad</th><th class="text-right">Monto</th></tr></thead>
+        <tbody>
+          {% for m in movimientos %}
+          <tr>
+            <td>{{ m.fecha }}</td>
+            <td><span class="badge {{ 'venta' if m.es_venta else 'compra' }}">{{ 'VENTA' if m.es_venta else 'COMPRA' }}</span></td>
+            <td>{{ m.entidad }}</td>
+            <td class="text-right">{{ m.monto_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-note">Sin movimientos en el periodo.</div>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h3>Documentos con Procesamiento Incompleto</h3>
+        <p>Comprobantes que aún no completaron la clasificación por IA y requieren revisión.</p>
+      </div>
+      {% if observados %}
+      <table>
+        <thead><tr><th>Comprobante</th><th>Entidad</th><th class="text-center">Estado</th></tr></thead>
+        <tbody>
+          {% for o in observados %}
+          <tr>
+            <td>{{ o.comprobante }}</td>
+            <td>{{ o.entidad }}</td>
+            <td class="text-center"><span class="badge {{ o.estado_class }}">{{ o.estado_label }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-note">Todos los comprobantes están procesados.</div>
+      {% endif %}
+    </div>
+
+    <div class="report-footer">
+      <span>Quanta Contadores — Informe generado automáticamente.</span>
+      <span>Documento informativo, no reemplaza los libros electrónicos oficiales de SUNAT.</span>
+    </div>
+  </div>
+</body>
+</html>

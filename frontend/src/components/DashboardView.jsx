@@ -5,10 +5,12 @@ import {
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, DollarSign, Activity, FileText,
-  Loader2, AlertCircle, CheckCircle2, XCircle, Users, Scale, ShoppingBag, Building2
+  Loader2, AlertCircle, CheckCircle2, XCircle, Users, Scale, ShoppingBag, Building2, Download
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import './DashboardView.css';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quanta-production-07d7.up.railway.app';
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value || 0);
@@ -43,6 +45,7 @@ export default function DashboardView({ currentClient, selectedPeriodo }) {
   // Data states
   const [documentos, setDocumentos] = useState([]);
   const [pagos, setPagos] = useState([]);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (currentClient && selectedPeriodo) {
@@ -81,6 +84,36 @@ export default function DashboardView({ currentClient, selectedPeriodo }) {
       setError("Error: " + (err.message || err.details || err.hint || JSON.stringify(err)));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!currentClient || !selectedPeriodo) return;
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/pdf/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: currentClient.id, periodo: selectedPeriodo })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'No se pudo generar el informe');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Informe_${currentClient.ruc}_${selectedPeriodo}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error al generar el informe PDF');
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -192,6 +225,10 @@ export default function DashboardView({ currentClient, selectedPeriodo }) {
           <h2 style={{fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', margin: 0}}>Resumen Financiero</h2>
           <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem'}}>Dashboard analítico para {currentClient.razon_social} • {selectedPeriodo}</p>
         </div>
+        <button className="btn btn-outline" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+          {downloadingPdf ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+          {downloadingPdf ? 'Generando informe...' : 'Descargar Informe PDF'}
+        </button>
       </div>
 
       {/* Grid Layout Principal */}
