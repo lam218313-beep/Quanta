@@ -109,12 +109,21 @@
   flex-direction: column;
 }
 
-.left-pane-logo {
-  height: 130px;
-  width: auto;
-  max-width: 80%;
-  object-fit: contain;
-  object-position: left top;
+.smart-ai-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: white;
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.smart-ai-title.outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.55);
+  position: relative;
+  top: -10px;
 }
 
 .left-pane-bottom {
@@ -161,16 +170,19 @@
   margin-bottom: 2rem;
 }
 
-.logo-icon-new-img {
-  height: 34px;
-  width: auto;
+.logo-icon-new {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: white;
   margin-bottom: 1.5rem;
-  animation: logoGlow 2.5s ease-in-out infinite;
-}
-
-@keyframes logoGlow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(124, 58, 237, 0)); }
-  50% { filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.55)); }
+  animation: logoPulse 2.5s ease-in-out infinite;
 }
 
 @keyframes logoPulse {
@@ -423,7 +435,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob,
-  .logo-icon-new-img,
+  .logo-icon-new,
   .login-container-new {
     animation: none !important;
   }

@@ -88,7 +88,8 @@ export default function LoginView({ onLoginSuccess }) {
         {/* Left Side: Visual / Abstract */}
         <div className="login-left-pane">
           <div className="left-pane-content">
-            <img src="/logo-quanta.png" alt="Quanta Contadores" className="left-pane-logo" />
+            <h1 className="smart-ai-title">QUANTA</h1>
+            <h1 className="smart-ai-title outline">CONTABILIDAD</h1>
 
             <div className="left-pane-bottom">
               <h2>IA para tu Estudio Contable</h2>
@@ -101,7 +102,9 @@ export default function LoginView({ onLoginSuccess }) {
         <div className="login-right-pane">
           <div className="form-wrapper">
             <div className="login-header-new">
-              <img src="/logo-quanta.png" alt="Quanta Contadores" className="logo-icon-new-img" />
+              <div className="logo-icon-new">
+                <span>Q</span>
+              </div>
               <h2>Bienvenido de nuevo</h2>
               <p>Inicia sesión para acceder a tu plataforma</p>
             </div>

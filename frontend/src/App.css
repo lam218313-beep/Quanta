@@ -86,14 +86,6 @@ body {
   padding-left: 0.5rem;
 }
 
-.brand-logo-img {
-  height: 52px;
-  width: auto;
-  max-width: 180px;
-  object-fit: contain;
-  object-position: left center;
-}
-
 .brand-icon {
   width: 32px;
   height: 32px;
