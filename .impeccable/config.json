@@ -38,6 +38,24 @@
         ],
         "createdAt": "2026-09-18T23:40:13.586Z",
         "reason": "print PDF report body (A4, rendered via Playwright), not screen UI - established print type scale (9-13px) throughout, same rationale as financial_report_header.html"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "app/brain/templates/financial_report_template.html"
+        ],
+        "createdAt": "2026-09-18T23:41:09.624Z",
+        "reason": "print PDF report body (A4, Playwright), not screen UI - no tap targets, viewed at standard document zoom; same rationale as financial_report_header.html"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "app/brain/templates/financial_report_template.html"
+        ],
+        "createdAt": "2026-09-18T23:41:09.802Z",
+        "reason": "verified visually via screenshot (scratchpad render) - border-top accent renders cleanly curved with the card's border-radius in Chromium/Playwright, no clash; standard top-accent-stripe card pattern"
       }
     ]
   }
