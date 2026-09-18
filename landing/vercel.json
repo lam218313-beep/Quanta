@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/app", "destination": "https://quanta-app-chi.vercel.app" },
+    { "source": "/app/:path*", "destination": "https://quanta-app-chi.vercel.app/:path*" }
+  ]
+}
