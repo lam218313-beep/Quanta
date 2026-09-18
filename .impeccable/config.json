@@ -29,6 +29,15 @@
         ],
         "createdAt": "2026-09-18T23:33:07.041Z",
         "reason": "print PDF header (Playwright page-margin template for an A4 report), not interactive screen UI - no tap targets, viewed at standard document zoom; matches the report's established print type scale (9-13px)"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "app/brain/templates/financial_report_template.html"
+        ],
+        "createdAt": "2026-09-18T23:40:13.586Z",
+        "reason": "print PDF report body (A4, rendered via Playwright), not screen UI - established print type scale (9-13px) throughout, same rationale as financial_report_header.html"
       }
     ]
   }
