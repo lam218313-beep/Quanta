@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quanta - System Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f9f9fb;
+            color: #333;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            padding: 2rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+        h1 {
+            color: #1a1a2e;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        .diagram-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+        .description {
+            line-height: 1.6;
+            color: #444;
+        }
+        .description h3 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Quanta System Architecture</h1>
+    <p class="subtitle">Generated Architecture Diagram</p>
+
+    <div class="diagram-container">
+        <div class="mermaid">
+            graph TD
+                %% Styles
+                classDef frontend fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b;
+                classDef backend fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20;
+                classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100;
+                classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+                classDef bot fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#263238;
+
+                %% Components
+                User(["👤 Usuario (Contador)"])
+                
+                subgraph FrontendLayer ["Capa Frontend (React + Vite)"]
+                    ReactUI["💻 Quanta UI<br/>(Dashboard, CRM, Validaciones)"]:::frontend
+                end
+                
+                subgraph DatabaseLayer ["Capa de Datos y Autenticación"]
+                    Supabase[("🗄️ Supabase<br/>(PostgreSQL, Auth, Storage)")]:::database
+                end
+                
+                subgraph BackendLayer ["Capa de Orquestación e IA (FastAPI)"]
+                    BrainAPI["🧠 Brain API<br/>(app/brain/main.py)"]:::backend
+                    TaskMgr["🔄 Orquestador de Tareas"]:::backend
+                    Bot1["🤖 Bot Extractor SIRE<br/>(Playwright)"]:::bot
+                    DataProc["📄 Procesamiento y PDF<br/>(Lógica Contable)"]:::backend
+                end
+                
+                subgraph ExternalSystems ["Sistemas Externos"]
+                    SUNAT["🏛️ SUNAT Portal<br/>(SIRE / Clave SOL)"]:::external
+                end
+
+                %% Connections
+                User -->|Interactúa| ReactUI
+                ReactUI -->|"Lectura/Escritura Directa<br/>(Vistas Unificadas)"| Supabase
+                ReactUI -->|"Llama a endpoints<br/>(/api/bot, /api/pdf)"| BrainAPI
+                
+                BrainAPI -->|"Lectura/Escritura Segura"| Supabase
+                BrainAPI -->|Controla| TaskMgr
+                
+                TaskMgr -->|"Ejecuta Scraping"| Bot1
+                Bot1 -->|"Navegación Automatizada"| SUNAT
+                
+                Bot1 -->|"Pasa Datos XML/TXT"| DataProc
+                DataProc -->|"Guarda Documentos"| Supabase
+                
+        </div>
+    </div>
+
+    <div class="description">
+        <h3>Desglose de Componentes (Actualizado)</h3>
+        <ul>
+            <li><strong>Frontend (React/Vite):</strong> La aplicación web de usuario única (SPA). A diferencia de arquitecturas tradicionales, se comunica de forma directa y segura con Supabase para mostrar los datos contables en tiempo real (como el <code>Dashboard</code> y el <code>CRM de Pagos</code>), aligerando enormemente la carga del servidor.</li>
+            <li><strong>Base de Datos (Supabase):</strong> Corazón de los datos transaccionales, almacena autenticación de usuarios, permisos, la base de PostgreSQL (con vistas complejas como <code>v_libro_unificado</code>) y almacenamiento de comprobantes (Storage).</li>
+            <li><strong>Backend de Orquestación (Brain API - FastAPI):</strong> Un backend moderno ubicado en <code>app/brain</code>, dedicado exclusivamente al trabajo pesado: generación de PDFs masivos, limpieza de datos mediante reglas estructuradas y la orquestación de la IA.</li>
+            <li><strong>Bots de Automatización (Playwright):</strong> Scripts de Python gestionados por el Brain API que simulan navegación humana para extraer los registros de compras y ventas de la SUNAT usando las credenciales (Clave SOL) del cliente.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'default',
+        securityLevel: 'loose',
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            curve: 'basis'
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Contable</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Outfit', sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #0f172a;
+            font-size: 28px;
+            margin: 0;
+        }
+        .header p {
+            color: #64748b;
+            font-size: 16px;
+            margin: 5px 0 0 0;
+        }
+        .client-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+        .client-info h2 {
+            margin: 0 0 5px 0;
+            color: #1d4ed8;
+            font-size: 20px;
+        }
+        .summary-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .card {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1);
+        }
+        .card.sales { border-top: 4px solid #10b981; }
+        .card.purchases { border-top: 4px solid #f59e0b; }
+        .card.taxes { border-top: 4px solid #ef4444; }
+        
+        .card h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+        .card p {
+            margin: 10px 0 0 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+            font-size: 13px;
+        }
+        th {
+            background: #f1f5f9;
+            color: #475569;
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #cbd5e1;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .section-title {
+            color: #0f172a;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Reporte Contable SIRE</h1>
+            <p>Periodo: {{ data.periodo }}</p>
+        </div>
+
+        <div class="client-info">
+            <h2>{{ data.cliente.razon_social }}</h2>
+            <p><strong>RUC:</strong> {{ data.cliente.ruc }}</p>
+        </div>
+
+        <div class="summary-cards">
+            <div class="card sales">
+                <h3>Ventas Totales</h3>
+                <p>S/ {{ "%.2f"|format(data.resumen.ventas|float) }}</p>
+                <small style="color: #64748b;">IGV: S/ {{ "%.2f"|format(data.resumen.igv_ventas|float) }}</small>
+            </div>
+            <div class="card purchases">
+                <h3>Compras Totales</h3>
+                <p>S/ {{ "%.2f"|format(data.resumen.compras|float) }}</p>
+                <small style="color: #64748b;">IGV: S/ {{ "%.2f"|format(data.resumen.igv_compras|float) }}</small>
+            </div>
+            <div class="card taxes">
+                <h3>IGV a Pagar (Estimado)</h3>
+                <p>S/ {{ "%.2f"|format(data.resumen.igv_ventas|float - data.resumen.igv_compras|float) }}</p>
+            </div>
+        </div>
+
+        <h3 class="section-title">Resumen de Comprobantes Procesados</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Libro</th>
+                    <th class="text-center">Total Documentos</th>
+                    <th class="text-right">Base Imponible (S/)</th>
+                    <th class="text-right">IGV (S/)</th>
+                    <th class="text-right">Total (S/)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Registro de Ventas</td>
+                    <td class="text-center">{{ data.resumen.docs_ventas }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.ventas_base|float) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.igv_ventas|float) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.ventas|float) }}</td>
+                </tr>
+                <tr>
+                    <td>Registro de Compras</td>
+                    <td class="text-center">{{ data.resumen.docs_compras }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.compras_base|float) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.igv_compras|float) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(data.resumen.compras|float) }}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="text-align: center; margin-top: 50px; color: #94a3b8; font-size: 12px;">
+            Generado automáticamente por Contax Brain. Documento informativo.
+        </div>
+    </div>
+</body>
+</html>

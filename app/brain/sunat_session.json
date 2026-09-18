@@ -1,0 +1,232 @@
+[
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "CHHFCMGNLNJOAIEADCCCNFJNAFHNFBCJMMCHONGBNKJNIGDOPFELCGPECOPOGAOHHIDDKDFDAAHPCHEKGGAAABFICGIFFBFMFFBCAKPICNGFHMBNOEOBDNPJOJFILJAI",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/libs/bootstrap/3.3.1/fonts",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "ALMIJLDHOAKMGFJHMIKKEPGBGGNAPDKOGONOBCFDANFLLLEICKJMBHBMJMIOJIACNEMDFFENFHICFHCCFAIAMAJDFFHIGEGCMEDIILBMEPGDAEFEKGODGAKGDAKMHNDC",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/ol-ti-itadminforuc-modifdatos",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5_cspm",
+    "value": "1234",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/ol-ti-itadminforuc-modifdatos",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "GOPLKCJJMMHPABGCONALPHHDMDCCABHHPMPBNPBHDCJDJBKBOAFCNBHFEOGBMANLIJCDIGCDFHFDGMBOIBJANKENFFNFHFGKKMIGMKOPMHCFIMODANLFPCKDABFNBCLB",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/libs/bootstrap/3.3.1/css",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "IPFHNEFJJOGAOJGLFEMGBFHPGJBGHOICHCEMABOPGFMIDPKNAIELBMMGAEGHDGMMKFEDMNNFFHODCMPPOLAALOOCFFJGPGCJOIBPJPOPEKIHKCGMIHLJDHADMHLPOIHM",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/libs/bootstrap/3.3.1/js",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "JHCGHGCIDBKNHIEIGLEGJDCILMDFJBEBNPNAOFLIOAMKDNAMNOCDLOJGHAIGEPJOOBMDMDNMFHHMNMBMJMMAFBAFFFCNCPOKAPOBGNIFHEKFHADBOOACOHABFIOKKNLO",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/libs/jquery/1.11.2",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "GOGDOHCFEODALJAHPCJHPLHOOEJJKIEMBKJBHAAEHMOJHMEDKEMDMHCMCCMMKAONDONDCIPHFHMLDHDHEJGAIAEGFFOGHFNGBBOJCONFHHBHOHAAIJDEAFAHMPKBFPKJ",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/libs/jquery/1.11.1",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "EABCLAKJICNCOICLFLECPAEJPKIBODMIJJICOACKNNCPLENDMACIAHAHLJHFCIEGPEPDPEMBFHAFOEKMFIOAJFOLFFNCJGLNJHIIGBGJKADEAIBAMOPIGMMBIFNOFEHG",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js/apps/workspace",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "HCAGOLPPBJKDACAEJMJDPJPBCJAEAJEJPFAJLFOCMMJIHLAEMPNMLCHGPICLIBIINNNDFOACFHCJHNNKAOOAIPHBFFICLHEPBOGDGOMJGKHANNFGPILALNJPILCOGHDI",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/imagenes",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5_cspm",
+    "value": "1234",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/time",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "HIMKOEFPFEHBIIENLLICCBGEBLKAMBKJFDDIBGMOGBILIJNEDNKEAIKMPHGJAOPILHFDJDDHPAEPDJJBMFOAFBPCBGJMHBLEEOKPJJNFLEDEICNPGOLJFCBIBADOIDIP",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/time",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "f5avraaaaaaaaaaaaaaaa_session_",
+    "value": "CNLGOHFKHICGLDINCAFJJEFNDBJDAFJBGMDKIGEFBHHKMCNOAGBHMBHOEKEGNFFLFEEDNDEMFHBODHIGBAEABCBFFFBJLKFHLDHNHMJLGJKHNMJOIFEKOADFJEBLEKLA",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/a/js",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "srv_id",
+    "value": "29340bb8be79159279a458b4411bd660",
+    "domain": "e-menu.sunat.gob.pe",
+    "path": "/",
+    "expires": 1780180774.984093,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "TS019e7fc2",
+    "value": "019edc9eb82396da0d1734e979c6c593f30f769bf5a528e31ed2311f21e1fabc170a05d2d2489d98bdedda2b08f8e10af27d1afa6a",
+    "domain": ".api-seguridad.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "MENU-SOL-LANGUAGE",
+    "value": "es-PE",
+    "domain": "api-seguridad.sunat.gob.pe",
+    "path": "/",
+    "expires": 1814737165.395168,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ITMENUSESSION",
+    "value": "VaF60_-9ObmQwPSihMqXJ8xd1WJYzrCUhE5pWM_Ss03tWgb2k2LBtiVcgHLZSFPdmM7Cq4gOvy5bCn9D6S0DY13vUzpMCahK05asohv23mbS8yki1D9hnEC3nrGtnnF3_qaDTW98BxUrOKlowIAg5ZyMuR24gMT7wmTYF12Wn7Z-cS9AksCBNXrTSS8-WmadpSGW-i0NOg6_TdBzpKalW2PmJEOqHIQuWvFemMza2R1hpRmbRL7xemi7ZTvajZ2M!1881131258!-1580422138",
+    "domain": "e-menu.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "S20600373065BABILONI",
+    "value": "1",
+    "domain": "e-menu.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "20600373065BABILONI",
+    "value": "1",
+    "domain": ".sunat.gob.pe",
+    "path": "/",
+    "expires": 1780180774.624363,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "TS015a04e9",
+    "value": "014dc399cb308f02e403fbefd96f840af6a423e23289ec2810609c30cdc7d7711331b30c3b7e549149684350531d2992e0a2096a760b90fc36444e688d9f6a2efe7ed2eb2fbf71f1eb5d65c72b49aba738c63730fdeef7097873a34532ffba2600455b88e3e1e847538532a882f37909ec2797f790",
+    "domain": ".e-menu.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "TS91307666027",
+    "value": "08fe7428c8ab2000af1196e261e088b47c103cb7607e9a8089c58a6f3b44143578e1a586c9692ad20846f0b93611300091c946321476fb005f623f344fdb5ebc02040ed1f6608f5e98ad0b6126d642e0307d688f07b54038b8c97d32d3c6c730",
+    "domain": "e-menu.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "1072229576",
+    "value": "1",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/",
+    "expires": 1780180775.031289,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ITADMINFORUCMODIFDATOSSESSION",
+    "value": "wnN61AIhi1-ucGcrAaH5Ad6YZZTF4ui8XuS8kWgzMyp2jOvY94PLwClkbYeV_yPQPnuBVGoZCZPK-WjM2TgDIK2WtMBEdJZa42fjsoObsf4jyxvFuPLLA5ZTsX7OpuaB19HFCQSAHsEuuQMFojBW2fHcuO3oV94ZuuHAeoyQ4SATKqswWUXALpEfKzT2N5sK2xd0muEiDWaG6UCtB_uEoItK4v8PPPc9Gr2VaDtiKZNyuKDzRvfBuHsSGkgZyR20!-523966856!-1751345178",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "TS44788fc0027",
+    "value": "08fe7428c8ab2000061048590a65912c3c69e84da26cb0ee8736e9685fddd97129f46693197f8df908d35051111130006e04af00ba3f6587fe04f0baa01f39c1696041cecb353636cd481d7602275e9a3463d14a027f716635aa9a43481cc3af",
+    "domain": "ww1.sunat.gob.pe",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]

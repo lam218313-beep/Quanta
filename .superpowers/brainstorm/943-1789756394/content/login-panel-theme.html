@@ -1,0 +1,71 @@
+<style>
+  .panel-demo { position: relative; width: 100%; height: 340px; border-radius: 14px; overflow: hidden; display: flex; }
+  .p-aurora { position: relative; flex: 1; background: #08060f; overflow: hidden; }
+  .p-aurora span { position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0.6; }
+  .p-aurora .a1 { width: 180px; height: 180px; background: #7c3aed; top: -50px; left: -30px; animation: driftA 9s ease-in-out infinite; }
+  .p-aurora .a2 { width: 160px; height: 160px; background: #ec4899; bottom: -50px; right: -20px; animation: driftB 11s ease-in-out infinite; }
+  @keyframes driftA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25px,18px) scale(1.1); } }
+  @keyframes driftB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20px,-15px) scale(1.05); } }
+  .p-aurora .brand { position: absolute; top: 16px; left: 18px; color: white; font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; z-index: 2; }
+
+  .p-form { width: 42%; padding: 1.4rem; display: flex; flex-direction: column; gap: 0.7rem; justify-content: center; }
+  .p-form .ftitle { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.1rem; }
+  .p-form .fsub { font-size: 0.7rem; margin-bottom: 0.5rem; }
+  .p-form .fld { border-radius: 9px; padding: 0.6rem 0.7rem; font-size: 0.75rem; }
+  .p-form .fbtn { border-radius: 9px; padding: 0.65rem; text-align: center; font-size: 0.8rem; font-weight: 600; margin-top: 0.3rem; }
+
+  /* Dark variant */
+  .theme-dark .p-form { background: rgba(255,255,255,0.04); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.08); }
+  .theme-dark .p-form .ftitle { color: #f8fafc; }
+  .theme-dark .p-form .fsub { color: #94a3b8; }
+  .theme-dark .p-form .fld { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; }
+  .theme-dark .p-form .fbtn { background: linear-gradient(to right, #7c3aed, #2563eb); color: white; box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
+
+  /* Light contrast variant */
+  .theme-light .p-form { background: rgba(255,255,255,0.92); }
+  .theme-light .p-form .ftitle { color: #0f172a; }
+  .theme-light .p-form .fsub { color: #64748b; }
+  .theme-light .p-form .fld { background: #f1f5f9; border: 1px solid #e2e8f0; color: #1e293b; }
+  .theme-light .p-form .fbtn { background: linear-gradient(to right, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 15px rgba(37,99,235,0.3); }
+</style>
+
+<h2>Panel del formulario: ¿oscuro total o contraste claro?</h2>
+<p class="subtitle">El fondo Aurora ya está definido. Falta decidir el panel derecho (donde va el formulario) — ¿lo hacemos oscuro/vidrio para que todo el login se sienta como una sola pieza con el resto de la app, o mantenemos un panel claro que contraste y resalte el formulario?</p>
+
+<div class="split">
+
+  <div class="option" data-choice="dark-unificado" onclick="toggleSelect(this)" style="flex-direction:column; padding: 0.75rem;">
+    <div class="panel-demo theme-dark">
+      <div class="p-aurora"><span class="a1"></span><span class="a2"></span><div class="brand">QUANTA</div></div>
+      <div class="p-form">
+        <div class="ftitle">Bienvenido</div>
+        <div class="fsub">Inicia sesión para continuar</div>
+        <div class="fld">tu@correo.com</div>
+        <div class="fld">••••••••</div>
+        <div class="fbtn">Iniciar Sesión</div>
+      </div>
+    </div>
+    <div class="content" style="margin-top:0.75rem;">
+      <h3>A. Todo oscuro / unificado</h3>
+      <p>El panel del formulario es vidrio oscuro translúcido, mismo mundo visual que el Aurora. Se siente como una sola superficie continua — más "app de IA premium".</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="light-contraste" onclick="toggleSelect(this)" style="flex-direction:column; padding: 0.75rem;">
+    <div class="panel-demo theme-light">
+      <div class="p-aurora"><span class="a1"></span><span class="a2"></span><div class="brand">QUANTA</div></div>
+      <div class="p-form">
+        <div class="ftitle">Bienvenido</div>
+        <div class="fsub">Inicia sesión para continuar</div>
+        <div class="fld">tu@correo.com</div>
+        <div class="fld">••••••••</div>
+        <div class="fbtn">Iniciar Sesión</div>
+      </div>
+    </div>
+    <div class="content" style="margin-top:0.75rem;">
+      <h3>B. Contraste claro</h3>
+      <p>El formulario vive en una tarjeta clara que resalta sobre el fondo oscuro. Más legible a primera vista, pero rompe un poco la coherencia con el resto de la app (que es oscura).</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,163 @@
+<style>
+  .bg-demo { position: relative; width: 100%; height: 200px; overflow: hidden; background: #060612; }
+  .bg-demo .label-tag { position: absolute; bottom: 8px; left: 8px; z-index: 5; font-size: 0.65rem; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 20px; backdrop-filter: blur(4px); }
+
+  /* A: Aurora Flow */
+  .aurora { background: #08060f; }
+  .aurora span { position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0.65; }
+  .aurora .a1 { width: 220px; height: 220px; background: #7c3aed; top: -60px; left: -40px; animation: driftA 9s ease-in-out infinite; }
+  .aurora .a2 { width: 200px; height: 200px; background: #ec4899; bottom: -70px; right: -30px; animation: driftB 11s ease-in-out infinite; }
+  .aurora .a3 { width: 160px; height: 160px; background: #2563eb; top: 30%; left: 40%; animation: driftC 8s ease-in-out infinite; }
+  @keyframes driftA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,30px) scale(1.15); } }
+  @keyframes driftB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px,-20px) scale(1.1); } }
+  @keyframes driftC { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-25px,25px) scale(0.9); } }
+
+  /* B: Constellation IA */
+  .constellation { background: #050510; }
+  .constellation canvas { width: 100%; height: 100%; display: block; }
+
+  /* C: Liquid Glass Orbs */
+  .liquid { background: #0a0714; }
+  .liquid svg { position: absolute; width: 0; height: 0; }
+  .liquid .goo-wrap { position: absolute; inset: 0; filter: url(#goo); }
+  .liquid .blob { position: absolute; border-radius: 50%; background: linear-gradient(135deg,#8b5cf6,#3b82f6); opacity: 0.8; }
+  .liquid .b1 { width: 110px; height: 110px; top: 20px; left: 30px; animation: floatA 7s ease-in-out infinite; }
+  .liquid .b2 { width: 90px; height: 90px; top: 80px; left: 120px; animation: floatB 6s ease-in-out infinite; background: linear-gradient(135deg,#ec4899,#8b5cf6); }
+  .liquid .b3 { width: 130px; height: 130px; top: 40px; left: 200px; animation: floatC 8s ease-in-out infinite; background: linear-gradient(135deg,#2563eb,#06b6d4); }
+  @keyframes floatA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(30px,20px); } }
+  @keyframes floatB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-25px,15px); } }
+  @keyframes floatC { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-20px,-25px); } }
+
+  /* D: Cosmic Starfield */
+  .cosmic { background: radial-gradient(ellipse at 30% 20%, #1a1030 0%, #050308 60%); }
+  .cosmic .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+  .cosmic .glow { position: absolute; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.5), transparent 70%); top: 10%; left: 20%; filter: blur(10px); animation: pulseGlow 5s ease-in-out infinite; }
+  .cosmic .streak { position: absolute; width: 2px; height: 60px; background: linear-gradient(to bottom, white, transparent); top: -60px; left: 70%; animation: shoot 4s linear infinite; animation-delay: 1.5s; opacity: 0; }
+  @keyframes twinkle { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
+  @keyframes pulseGlow { 0%,100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.2); } }
+  @keyframes shoot { 0% { transform: translate(0,0); opacity: 0; } 5% { opacity: 1; } 30% { transform: translate(-80px,180px); opacity: 0; } 100% { opacity: 0; } }
+</style>
+
+<h2>Fondo animado para el panel del Login</h2>
+<p class="subtitle">Cuatro direcciones "mágicas / tecnológicas" en tendencia. Mirá cómo se mueven unos segundos y elegí la que más te representa (podemos combinar elementos de más de una).</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="aurora" onclick="toggleSelect(this)">
+    <div class="card-image bg-demo aurora">
+      <span class="a1"></span><span class="a2"></span><span class="a3"></span>
+      <div class="label-tag">Aurora Flow</div>
+    </div>
+    <div class="card-body">
+      <h3>A. Aurora Flow</h3>
+      <p>Manchas de gradiente violeta/rosa/azul que respiran lentamente. Elegante, premium, low-key — el estilo que usan Linear, Stripe, Vercel.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="constellation" onclick="toggleSelect(this)">
+    <div class="card-image bg-demo constellation">
+      <canvas id="constellationCanvas"></canvas>
+      <div class="label-tag">Constelación IA</div>
+    </div>
+    <div class="card-body">
+      <h3>B. Constelación IA</h3>
+      <p>Nodos y líneas conectándose como una red neuronal. Refuerza literalmente el mensaje "IA procesando tus datos".</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="liquid" onclick="toggleSelect(this)">
+    <div class="card-image bg-demo liquid">
+      <svg><defs><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" /><feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" /></filter></defs></svg>
+      <div class="goo-wrap">
+        <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+      </div>
+      <div class="label-tag">Liquid Glass</div>
+    </div>
+    <div class="card-body">
+      <h3>C. Liquid Glass Orbs</h3>
+      <p>Blobs que se funden entre sí tipo metaball (estética "liquid glass" de iOS/visionOS 2025-26). Muy fluido, orgánico, futurista.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="cosmic" onclick="toggleSelect(this)">
+    <div class="card-image bg-demo cosmic" id="cosmicBox">
+      <div class="glow"></div>
+      <div class="streak"></div>
+      <div class="label-tag">Cosmic Starfield</div>
+    </div>
+    <div class="card-body">
+      <h3>D. Cosmic Starfield</h3>
+      <p>Cielo profundo con estrellas titilando, glow violeta y algún destello ocasional. La más literalmente "mágica".</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Constellation canvas animation
+  (function() {
+    const canvas = document.getElementById('constellationCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const N = 26;
+    const pts = Array.from({length: N}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4
+    }));
+
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of pts) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      }
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < 90) {
+            ctx.strokeStyle = 'rgba(139,92,246,' + (1 - d/90) * 0.5 + ')';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.fillStyle = '#c4b5fd';
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  // Starfield stars
+  (function() {
+    const box = document.getElementById('cosmicBox');
+    for (let i = 0; i < 40; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random() * 2 + 0.5;
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.top = Math.random() * 100 + '%';
+      s.style.left = Math.random() * 100 + '%';
+      s.style.animationDelay = (Math.random() * 3) + 's';
+      box.appendChild(s);
+    }
+  })();
+</script>

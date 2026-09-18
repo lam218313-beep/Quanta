@@ -1,0 +1,39 @@
+# Contax Brain API
+# Requirements for the AI Orchestration Layer
+
+# Web Framework
+fastapi
+uvicorn[standard]
+
+# Supabase Client
+supabase
+
+# Environment Variables
+python-dotenv
+
+# File Processing
+python-multipart
+aiofiles
+
+# HTTP Client (for SUNAT API)
+httpx
+requests
+
+# Encryption (for Clave SOL storage)
+cryptography
+
+# Data Validation
+pydantic
+pydantic-settings
+
+# Excel output
+openpyxl
+
+# OCR and Document Processing (Phase 4)
+pytesseract         # Tesseract OCR wrapper
+Pillow              # Image processing
+pdf2image           # Convert PDF pages to images
+pypdf               # PDF text extraction (for text-based PDFs)
+
+# Browser Automation (Phase 11)
+playwright          # For semi-automated SOL login
