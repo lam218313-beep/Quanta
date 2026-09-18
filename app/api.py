@@ -56,6 +56,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    # Vercel gives every deploy (production + each preview) its own unique
+    # subdomain under this project — match all of them instead of hardcoding
+    # a single URL that changes on every deploy.
+    allow_origin_regex=r"https://quanta-.*-lam218313-beeps-projects\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
