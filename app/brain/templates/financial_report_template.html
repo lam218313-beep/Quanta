@@ -26,7 +26,7 @@
   /* Sections */
   .section { margin-bottom: 26px; }
   .section-head { margin-bottom: 10px; }
-  .section-head h3 { font-size: 13px; color: #0f172a; font-weight: 700; }
+  .section-head h2 { font-size: 13px; color: #0f172a; font-weight: 700; }
   .report-h1 { font-size: 19px; color: #0f172a; font-weight: 800; }
   .section-head p { margin: 2px 0 0; color: #64748b; font-size: 10px; line-height: 1.4; }
 
@@ -127,7 +127,7 @@
     <div class="two-col section">
       <div>
         <div class="section-head">
-          <h3>Compras por Tipo de Comprobante</h3>
+          <h2>Compras por Tipo de Comprobante</h2>
           <p>Distribución del monto total de compras según el tipo de documento (Factura, Boleta, Notas).</p>
         </div>
         {% if distribucion %}
@@ -150,7 +150,7 @@
 
       <div>
         <div class="section-head">
-          <h3>Balance del Periodo</h3>
+          <h2>Balance del Periodo</h2>
           <p>Comparación entre ventas, compras y la utilidad bruta resultante.</p>
         </div>
         {% for b in balance %}
@@ -165,7 +165,7 @@
     <div class="two-col section">
       <div>
         <div class="section-head">
-          <h3>Top 5 Clientes</h3>
+          <h2>Top 5 Clientes</h2>
           <p>Entidades con mayor volumen de ventas facturadas en el periodo.</p>
         </div>
         {% if top_clientes %}
@@ -183,7 +183,7 @@
       </div>
       <div>
         <div class="section-head">
-          <h3>Top 5 Proveedores</h3>
+          <h2>Top 5 Proveedores</h2>
           <p>Entidades con mayor volumen de compras registradas en el periodo.</p>
         </div>
         {% if top_proveedores %}
@@ -203,7 +203,7 @@
 
     <div class="section page-break">
       <div class="section-head">
-        <h3>Últimos Movimientos Registrados</h3>
+        <h2>Últimos Movimientos Registrados</h2>
         <p>Detalle de los comprobantes de compras y ventas más recientes del periodo (máx. 25).</p>
       </div>
       {% if movimientos %}
@@ -227,7 +227,7 @@
 
     <div class="section">
       <div class="section-head">
-        <h3>Documentos con Procesamiento Incompleto</h3>
+        <h2>Documentos con Procesamiento Incompleto</h2>
         <p>Comprobantes que aún no completaron la clasificación por IA y requieren revisión.</p>
       </div>
       {% if observados %}

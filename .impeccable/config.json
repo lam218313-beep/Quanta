@@ -56,6 +56,15 @@
         ],
         "createdAt": "2026-09-18T23:41:09.802Z",
         "reason": "verified visually via screenshot (scratchpad render) - border-top accent renders cleanly curved with the card's border-radius in Chromium/Playwright, no clash; standard top-accent-stripe card pattern"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "app/brain/templates/financial_report_template.html"
+        ],
+        "createdAt": "2026-09-18T23:46:21.903Z",
+        "reason": "pre-existing app-wide typography (Inter/Outfit) used consistently across the whole product for brand consistency, same as every other file this was already justified for this session"
       }
     ]
   }
