@@ -19,7 +19,27 @@
   width: 100%;
 }
 
-.header-logo img { height: 40px; width: auto; }
+.logo-mark { display: flex; align-items: center; gap: 0.6rem; }
+.logo-mark-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+}
+.logo-mark-text {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
 
 .header-nav {
   display: flex;
@@ -273,7 +293,6 @@
   gap: 2rem;
   margin-bottom: 2rem;
 }
-.footer-logo img { height: 38px; }
 .footer-links { display: flex; gap: 2.5rem; flex-wrap: wrap; }
 .footer-col h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.75rem; }
 .footer-col a, .footer-col span { display: block; font-size: 0.88rem; color: #cbd5e1; margin-bottom: 0.5rem; }

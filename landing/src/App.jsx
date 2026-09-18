@@ -7,6 +7,15 @@ import './App.css';
 
 const APP_URL = '/app';
 
+function Logo() {
+  return (
+    <div className="logo-mark">
+      <div className="logo-mark-icon">Q</div>
+      <span className="logo-mark-text">Quanta</span>
+    </div>
+  );
+}
+
 const SERVICIOS = [
   {
     icon: <Bot size={22} />,
@@ -87,7 +96,7 @@ export default function App() {
       <header className="site-header">
         <div className="container">
           <a href="#top" className="header-logo">
-            <img src="/logo-quanta.png" alt="Quanta Contadores" />
+            <Logo />
           </a>
 
           <nav className="header-nav">
@@ -275,7 +284,7 @@ export default function App() {
         <div className="container">
           <div className="footer-top">
             <div className="footer-logo">
-              <img src="/logo-quanta.png" alt="Quanta Contadores" />
+              <Logo />
             </div>
             <div className="footer-links">
               <div className="footer-col">
