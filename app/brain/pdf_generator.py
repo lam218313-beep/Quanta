@@ -21,19 +21,40 @@ def _get_logo_base64() -> str:
             _logo_base64_cache = base64.b64encode(f.read()).decode("ascii")
     return _logo_base64_cache
 
-async def _html_to_pdf(html_content: str, output_path: str, format_type: str = 'A4'):
-    """Convierte HTML a PDF usando Playwright."""
+async def _html_to_pdf(
+    html_content: str,
+    output_path: str,
+    format_type: str = 'A4',
+    header_template: str = None,
+    footer_template: str = None,
+):
+    """
+    Convierte HTML a PDF usando Playwright. When header_template/footer_template
+    are given, they repeat on every page (Playwright's print header/footer,
+    independent of the main content flow) — used for the running report
+    header and standard page-numbering footer.
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         # Set HTML content and wait for network/fonts to load
         await page.set_content(html_content, wait_until="networkidle")
-        await page.pdf(
+
+        has_header_footer = bool(header_template or footer_template)
+        pdf_kwargs = dict(
             path=output_path,
             format=format_type,
             print_background=True,
-            margin={"top": "0", "right": "0", "bottom": "0", "left": "0"}
+            display_header_footer=has_header_footer,
         )
+        if has_header_footer:
+            pdf_kwargs["header_template"] = header_template or "<span></span>"
+            pdf_kwargs["footer_template"] = footer_template or "<span></span>"
+            pdf_kwargs["margin"] = {"top": "80px", "right": "0", "bottom": "50px", "left": "0"}
+        else:
+            pdf_kwargs["margin"] = {"top": "0", "right": "0", "bottom": "0", "left": "0"}
+
+        await page.pdf(**pdf_kwargs)
         await browser.close()
 
 def parse_sunat_xml(xml_bytes: bytes) -> Dict[str, Any]:
@@ -218,8 +239,19 @@ async def generate_financial_report_pdf(report_data: Dict[str, Any], output_path
     """
     Generates the full financial report PDF (mirrors the Dashboard page):
     KPIs, distribution by comprobante type, balance, top clients/suppliers,
-    recent movements and incomplete-processing alerts.
+    recent movements and incomplete-processing alerts. The branded header
+    (logo + client + periodo) and a standard "Página X de Y" footer repeat
+    on every page via Playwright's print header/footer, not just page 1.
     """
-    template = env.get_template("financial_report_template.html")
-    html_content = template.render(logo_base64=_get_logo_base64(), **report_data)
-    await _html_to_pdf(html_content, output_path)
+    logo_base64 = _get_logo_base64()
+    html_content = env.get_template("financial_report_template.html") \
+        .render(logo_base64=logo_base64, **report_data)
+    header_html = env.get_template("financial_report_header.html") \
+        .render(logo_base64=logo_base64, **report_data)
+    footer_html = env.get_template("financial_report_footer.html").render()
+
+    await _html_to_pdf(
+        html_content, output_path,
+        header_template=header_html,
+        footer_template=footer_html,
+    )
