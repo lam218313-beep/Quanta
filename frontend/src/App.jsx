@@ -618,7 +618,7 @@ function App() {
                   <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Empresa</span>
                   <div style={{flex: 1, padding: '0.65rem 1.2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', color: 'var(--text-main)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                     <Building2 size={15} color="var(--text-muted)" />
-                    {currentClient ? `${currentClient.ruc} - ${currentClient.razon_social}` : 'Cargando...'}
+                    {currentClient ? currentClient.ruc : 'Cargando...'}
                   </div>
                 </div>
               </div>
