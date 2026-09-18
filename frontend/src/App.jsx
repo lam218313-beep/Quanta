@@ -570,13 +570,15 @@ function App() {
               <Database size={18} />
               <span>Ventas</span>
             </button>
-            <button 
-              className={`main-tab-btn ${activeMainTab === 'procesamiento' ? 'active' : ''}`}
-              onClick={() => setActiveMainTab('procesamiento')}
-            >
-              <Activity size={18} />
-              <span>Procesamiento</span>
-            </button>
+            {userRole !== 'client' && (
+              <button
+                className={`main-tab-btn ${activeMainTab === 'procesamiento' ? 'active' : ''}`}
+                onClick={() => setActiveMainTab('procesamiento')}
+              >
+                <Activity size={18} />
+                <span>Procesamiento</span>
+              </button>
+            )}
             <button 
               className={`main-tab-btn ${activeMainTab === 'exportacion' ? 'active' : ''}`}
               onClick={() => setActiveMainTab('exportacion')}
@@ -676,7 +678,7 @@ function App() {
             <ComprasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'ventas' ? (
             <VentasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
-          ) : activeMainTab === 'procesamiento' ? (
+          ) : activeMainTab === 'procesamiento' && userRole !== 'client' ? (
             <ProcesamientoView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'exportacion' ? (
             <ExportacionView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
