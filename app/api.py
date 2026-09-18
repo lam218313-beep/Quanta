@@ -43,6 +43,7 @@ from app.brain.routes.export import router as export_router
 from app.brain.routes.bot import router as bot_router
 from app.brain.routes.facturacion import router as facturacion_router
 from app.brain.routes.processing import router as processing_router
+from app.brain.routes.client_auth import router as client_auth_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -73,6 +74,7 @@ app.include_router(export_router)
 app.include_router(bot_router)
 app.include_router(facturacion_router)
 app.include_router(processing_router)
+app.include_router(client_auth_router)
 
 
 @app.get("/health")

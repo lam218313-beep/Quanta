@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Plus, Building2, CreditCard, CheckCircle2, AlertCircle, Clock, FileText, TrendingDown, ArrowLeft, Upload } from 'lucide-react';
+import { Users, Search, Plus, Building2, CreditCard, CheckCircle2, AlertCircle, Clock, FileText, TrendingDown, ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function ClientesView({ setActiveMainTab }) {
@@ -10,6 +10,7 @@ export default function ClientesView({ setActiveMainTab }) {
   const [activeTab, setActiveTab] = useState('directorio'); // 'directorio' | 'pagos' | 'cliente'
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -117,9 +118,11 @@ export default function ClientesView({ setActiveMainTab }) {
     const nuevoEstado = currentEstado === 'PENDIENTE' ? 'PAGADO' : 'PENDIENTE';
     const fechaPago = nuevoEstado === 'PAGADO' ? new Date().toISOString().split('T')[0] : null;
 
+    setTogglingId(pagoId);
+
     // Optimistic UI update
     setPagos(prev => prev.map(p => p.id === pagoId ? { ...p, estado: nuevoEstado, fecha_pago: fechaPago } : p));
-    
+
     const { error } = await supabase
       .from('pagos_clientes')
       .update({ estado: nuevoEstado, fecha_pago: fechaPago })
@@ -129,6 +132,8 @@ export default function ClientesView({ setActiveMainTab }) {
       console.error('Error toggling estado:', error);
       fetchData(); // rollback on error
     }
+
+    setTogglingId(null);
   };
 
   const handleFileUpload = async (event, pagoId) => {
@@ -382,13 +387,14 @@ export default function ClientesView({ setActiveMainTab }) {
                           <td style={{padding: '0.75rem 0.5rem', fontWeight: 600, color: 'var(--text-main)'}}>{mes}</td>
                           <td style={{padding: '0.75rem 0.5rem', textAlign: 'right', fontFamily: 'monospace'}}>S/ {pagoRec.monto.toFixed(2)}</td>
                           <td style={{padding: '0.75rem 0.5rem', textAlign: 'center'}}>
-                            <button 
+                            <button
                               onClick={() => toggleEstadoPago(pagoRec.id, pagoRec.estado)}
-                              className="badge" 
-                              style={{background: style.bg, color: style.text, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid transparent', cursor: 'pointer', padding: '0.25rem 0.5rem', transition: 'all 0.2s', outline: 'none'}}
+                              className="badge"
+                              disabled={togglingId === pagoRec.id}
+                              style={{background: style.bg, color: style.text, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid transparent', cursor: togglingId === pagoRec.id ? 'default' : 'pointer', padding: '0.25rem 0.5rem', transition: 'all 0.2s', outline: 'none', opacity: togglingId === pagoRec.id ? 0.7 : 1}}
                               title="Clic para cambiar estado"
                             >
-                              {style.icon} {pagoRec.estado}
+                              {togglingId === pagoRec.id ? <Loader2 size={12} className="spin" /> : style.icon} {pagoRec.estado}
                             </button>
                           </td>
                           <td style={{padding: '0.75rem 0.5rem', color: 'var(--text-muted)', textAlign: 'center'}}>{pagoRec.fecha_pago || '-'}</td>

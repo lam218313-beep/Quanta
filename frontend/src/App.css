@@ -12,6 +12,15 @@
   --panel-border: rgba(255, 255, 255, 0.08);
 }
 
+/* Shared loading-spinner utility — any async button icon can use className="spin" */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 html, body {
   height: 100%;
 }

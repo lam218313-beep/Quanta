@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Activity, Database, CheckCircle, RefreshCcw, Search, BarChart3, UploadCloud, Terminal, Download, Edit2, X, Upload, ChevronRight, ChevronDown, ChevronUp, UserPlus, Settings, FileText, Calculator, Users, LogOut, CheckCircle2, XCircle, RefreshCw, BarChart2, Mail } from 'lucide-react'
+import { Activity, Database, CheckCircle, RefreshCcw, Search, BarChart3, UploadCloud, Terminal, Download, Edit2, X, Upload, ChevronRight, ChevronDown, ChevronUp, UserPlus, Settings, FileText, Calculator, Users, LogOut, CheckCircle2, XCircle, RefreshCw, BarChart2, Mail, Building2 } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import './App.css'
 import FacturacionView from './components/FacturacionView'
@@ -50,6 +50,7 @@ function App() {
   
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const [userClienteId, setUserClienteId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState([])
   const [notifications, setNotifications] = useState([])
@@ -79,6 +80,7 @@ function App() {
   const fetchUserRole = async (session) => {
     if (!session) {
       setUserRole(null)
+      setUserClienteId(null)
       return
     }
     try {
@@ -88,6 +90,10 @@ function App() {
       if (res.ok) {
         const profile = await res.json()
         setUserRole(profile.role || 'client')
+        setUserClienteId(profile.cliente_id || null)
+        if (profile.role === 'client' && profile.cliente_id) {
+          setSelectedCliente(profile.cliente_id)
+        }
       } else {
         setUserRole('client')
       }
@@ -606,27 +612,39 @@ function App() {
         {/* Top Bar */}
         <header className="top-bar">
           <div className="top-bar-controls" style={{display: 'flex', gap: '2rem', alignItems: 'center', justifyContent: 'center', flex: 1}}>
-            <div className="control-group" style={{flex: '0 1 350px'}}>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
-                <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Cliente</span>
-                <input
-                  list="clientes-datalist"
-                  placeholder="Buscar RUC o Nombre..."
-                  value={clientSearchText}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setClientSearchText(val);
-                    const found = clientes.find(c => `${c.ruc} - ${c.razon_social}` === val);
-                    if (found) setSelectedCliente(found.id);
-                    else if (val === '') setSelectedCliente('');
-                  }}
-                  style={{flex: 1, padding: '0.65rem 1.2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none'}}
-                />
+            {userRole === 'client' ? (
+              <div className="control-group" style={{flex: '0 1 350px'}}>
+                <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
+                  <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Empresa</span>
+                  <div style={{flex: 1, padding: '0.65rem 1.2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', color: 'var(--text-main)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <Building2 size={15} color="var(--text-muted)" />
+                    {currentClient ? `${currentClient.ruc} - ${currentClient.razon_social}` : 'Cargando...'}
+                  </div>
+                </div>
               </div>
-              <datalist id="clientes-datalist">
-                {clientes.map(c => <option key={c.id} value={`${c.ruc} - ${c.razon_social}`} />)}
-              </datalist>
-            </div>
+            ) : (
+              <div className="control-group" style={{flex: '0 1 350px'}}>
+                <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
+                  <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Cliente</span>
+                  <input
+                    list="clientes-datalist"
+                    placeholder="Buscar RUC o Nombre..."
+                    value={clientSearchText}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setClientSearchText(val);
+                      const found = clientes.find(c => `${c.ruc} - ${c.razon_social}` === val);
+                      if (found) setSelectedCliente(found.id);
+                      else if (val === '') setSelectedCliente('');
+                    }}
+                    style={{flex: 1, padding: '0.65rem 1.2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none'}}
+                  />
+                </div>
+                <datalist id="clientes-datalist">
+                  {clientes.map(c => <option key={c.id} value={`${c.ruc} - ${c.razon_social}`} />)}
+                </datalist>
+              </div>
+            )}
 
             <div className="control-group" style={{flex: '0 1 220px'}}>
               <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, BarChart2 } from 'lucide-react';
+import { FileText, Download, BarChart2, Loader2 } from 'lucide-react';
 import './Facturacion.css'; 
 
 export default function ReportesView({ clientes, selectedCliente, onSelectCliente, addToast, apiBaseUrl }) {
@@ -117,7 +117,7 @@ export default function ReportesView({ clientes, selectedCliente, onSelectClient
               <input type="text" value={periodo} onChange={e => setPeriodo(e.target.value)} placeholder="Ej: 202401" />
             </div>
             <button className="submit-btn" onClick={handleGenerateReport} disabled={isGenerating}>
-              <Download size={18} /> {isGenerating ? 'Generando PDF...' : 'Descargar Reporte PDF'}
+              {isGenerating ? <Loader2 size={18} className="spin" /> : <Download size={18} />} {isGenerating ? 'Generando PDF...' : 'Descargar Reporte PDF'}
             </button>
           </div>
 
@@ -130,7 +130,7 @@ export default function ReportesView({ clientes, selectedCliente, onSelectClient
               <input type="file" accept=".xml" onChange={(e) => setXmlFile(e.target.files[0])} style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)'}} />
             </div>
             <button className="submit-btn" style={{background: '#3b82f6', borderColor: '#2563eb'}} onClick={handleGenerateInvoice} disabled={isGenerating || !xmlFile}>
-              <FileText size={18} /> {isGenerating ? 'Generando PDF...' : 'Descargar Factura PDF'}
+              {isGenerating ? <Loader2 size={18} className="spin" /> : <FileText size={18} />} {isGenerating ? 'Generando PDF...' : 'Descargar Factura PDF'}
             </button>
           </div>
 

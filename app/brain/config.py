@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_key: str
+    supabase_anon_key: str = ""
     supabase_db_password: str = ""
     
     # Odoo
