@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Database, Search, File, Eye, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
+import { Download, Database, Search, File, Eye, CheckCircle2, ChevronRight, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quanta-production-07d7.up.railway.app';
 
 export default function ExportacionView({ currentClient, selectedPeriodo }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDoc, setSelectedDoc] = useState(null);
+  const [downloadingAction, setDownloadingAction] = useState(null); // null | 'pdf-compras' | 'pdf-ventas' | 'excel-preliminar' | 'excel-final'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,11 +38,80 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
     fetchData();
   }, [currentClient, selectedPeriodo]);
 
-  const filteredData = data.filter(r => 
-    (r.nombre_tercero?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+  const filteredData = data.filter(r =>
+    (r.nombre_tercero?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (r.ruc_tercero || '').includes(searchTerm) ||
     (r.nro_cp || '').includes(searchTerm)
   );
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const runExport = async (action, url, options, filename) => {
+    if (!currentClient || !selectedPeriodo) {
+      alert('Selecciona un cliente y un periodo primero.');
+      return;
+    }
+    setDownloadingAction(action);
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'No se pudo generar el archivo.');
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, filename);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error al generar el archivo.');
+    } finally {
+      setDownloadingAction(null);
+    }
+  };
+
+  const handleConsolidarPdf = (tipoLibro) => {
+    const action = tipoLibro === 'COMPRAS' ? 'pdf-compras' : 'pdf-ventas';
+    runExport(
+      action,
+      `${API_BASE_URL}/api/export/pdf-merged`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruc: currentClient.ruc, periodo: selectedPeriodo, tipo_libro: tipoLibro, allow_incomplete: false })
+      },
+      `Comprobantes_${tipoLibro}_${selectedPeriodo}.pdf`
+    );
+  };
+
+  const handleExcelPreliminar = () => {
+    runExport(
+      'excel-preliminar',
+      `${API_BASE_URL}/api/export/preliminar-excel`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruc: currentClient.ruc, periodo: selectedPeriodo })
+      },
+      `Preliminar_${currentClient.ruc}_${selectedPeriodo}.xlsx`
+    );
+  };
+
+  const handleExcelFinal = () => {
+    runExport(
+      'excel-final',
+      `${API_BASE_URL}/api/export/excel/${currentClient.id}/${selectedPeriodo}`,
+      { method: 'GET' },
+      `Final_${currentClient.ruc}_${selectedPeriodo}.xlsx`
+    );
+  };
 
   return (
     <div className="view-container animate-fade-in" style={{padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%'}}>
@@ -50,17 +122,17 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Genera reportes finales y consolida la documentación.</p>
         </div>
         <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <File size={16} /> Consolidar PDF Compras
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={() => handleConsolidarPdf('COMPRAS')} disabled={downloadingAction !== null}>
+            {downloadingAction === 'pdf-compras' ? <Loader2 size={16} className="spin" /> : <File size={16} />} Consolidar PDF Compras
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <File size={16} /> Consolidar PDF Ventas
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={() => handleConsolidarPdf('VENTAS')} disabled={downloadingAction !== null}>
+            {downloadingAction === 'pdf-ventas' ? <Loader2 size={16} className="spin" /> : <File size={16} />} Consolidar PDF Ventas
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <Download size={16} /> Excel Preliminar
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={handleExcelPreliminar} disabled={downloadingAction !== null}>
+            {downloadingAction === 'excel-preliminar' ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Excel Preliminar
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <Download size={16} /> Exportar Excel Final
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={handleExcelFinal} disabled={downloadingAction !== null}>
+            {downloadingAction === 'excel-final' ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Exportar Excel Final
           </button>
         </div>
       </div>
