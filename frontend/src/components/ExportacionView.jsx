@@ -104,13 +104,9 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
     );
   };
 
-  const handleExcelFinal = () => {
-    runExport(
-      'excel-final',
-      `${API_BASE_URL}/api/export/excel/${currentClient.id}/${selectedPeriodo}`,
-      { method: 'GET' },
-      `Final_${currentClient.ruc}_${selectedPeriodo}.xlsx`
-    );
+  const exportBtnStyle = {
+    display: 'flex', alignItems: 'center', gap: '0.4rem',
+    padding: '0.45rem 0.8rem', fontSize: '0.78rem',
   };
 
   return (
@@ -121,18 +117,15 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
           <h2 style={{fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', margin: 0}}>Exportación y Cierre</h2>
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Genera reportes finales y consolida la documentación.</p>
         </div>
-        <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={() => handleConsolidarPdf('COMPRAS')} disabled={downloadingAction !== null}>
-            {downloadingAction === 'pdf-compras' ? <Loader2 size={16} className="spin" /> : <File size={16} />} Consolidar PDF Compras
+        <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+          <button className="btn btn-outline" style={exportBtnStyle} onClick={() => handleConsolidarPdf('COMPRAS')} disabled={downloadingAction !== null}>
+            {downloadingAction === 'pdf-compras' ? <Loader2 size={13} className="spin" /> : <File size={13} />} PDF Compras
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={() => handleConsolidarPdf('VENTAS')} disabled={downloadingAction !== null}>
-            {downloadingAction === 'pdf-ventas' ? <Loader2 size={16} className="spin" /> : <File size={16} />} Consolidar PDF Ventas
+          <button className="btn btn-outline" style={exportBtnStyle} onClick={() => handleConsolidarPdf('VENTAS')} disabled={downloadingAction !== null}>
+            {downloadingAction === 'pdf-ventas' ? <Loader2 size={13} className="spin" /> : <File size={13} />} PDF Ventas
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={handleExcelPreliminar} disabled={downloadingAction !== null}>
-            {downloadingAction === 'excel-preliminar' ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Excel Preliminar
-          </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={handleExcelFinal} disabled={downloadingAction !== null}>
-            {downloadingAction === 'excel-final' ? <Loader2 size={16} className="spin" /> : <Download size={16} />} Exportar Excel Final
+          <button className="btn btn-outline" style={exportBtnStyle} onClick={handleExcelPreliminar} disabled={downloadingAction !== null}>
+            {downloadingAction === 'excel-preliminar' ? <Loader2 size={13} className="spin" /> : <Download size={13} />} Excel Preliminar
           </button>
         </div>
       </div>
