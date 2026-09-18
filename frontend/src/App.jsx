@@ -597,17 +597,16 @@ function App() {
             )}
           </div>
 
-
-
-        
-        <div className="menu-label" style={{marginTop: '1rem'}}>Sistema</div>
-        <button 
-          className="main-tab-btn"
-          onClick={handleLogout}
-        >
-          <LogOut size={18} />
-          <span>Cerrar Sesión</span>
-        </button>
+          <div className="sidebar-controls">
+            <div className="menu-label">Sistema</div>
+            <button
+              className="main-tab-btn"
+              onClick={handleLogout}
+            >
+              <LogOut size={18} />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
       </aside>
 
       <div className="main-area">

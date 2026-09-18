@@ -50,16 +50,16 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Genera reportes finales y consolida la documentación.</p>
         </div>
         <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end'}}>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#8b5cf6', color: '#8b5cf6'}}>
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
             <File size={16} /> Consolidar PDF Compras
           </button>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#8b5cf6', color: '#8b5cf6'}}>
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
             <File size={16} /> Consolidar PDF Ventas
           </button>
-          <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, #10b981, #047857)'}}>
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
             <Download size={16} /> Excel Preliminar
           </button>
-          <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
             <Download size={16} /> Exportar Excel Final
           </button>
         </div>
