@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DownloadCloud, Database, Search, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function PropuestaView({ currentClient, selectedPeriodo }) {
+export default function PropuestaView({ currentClient, selectedPeriodo, userRole }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,11 +49,13 @@ export default function PropuestaView({ currentClient, selectedPeriodo }) {
           <h2 style={{fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', margin: 0}}>Propuesta SIRE</h2>
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Gestiona y descarga la propuesta de comprobantes desde SUNAT.</p>
         </div>
-        <div style={{display: 'flex', gap: '1rem'}}>
-          <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <DownloadCloud size={16} /> Autenticar y Descargar Propuesta SIRE
-          </button>
-        </div>
+        {userRole !== 'client' && (
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <DownloadCloud size={16} /> Autenticar y Descargar Propuesta SIRE
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs / Toggle */}

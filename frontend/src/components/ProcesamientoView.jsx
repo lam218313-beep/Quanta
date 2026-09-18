@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, BarChart3, Database, FileText, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function ProcesamientoView({ currentClient, selectedPeriodo }) {
+export default function ProcesamientoView({ currentClient, selectedPeriodo, userRole }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,14 +55,16 @@ export default function ProcesamientoView({ currentClient, selectedPeriodo }) {
           <h2 style={{fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', margin: 0}}>Procesamiento IA</h2>
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Análisis inteligente, extracción de glosas de XML y clasificación contable.</p>
         </div>
-        <div style={{display: 'flex', gap: '1rem'}}>
-          <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)'}}>
-            <Search size={16} /> Extraer Glosas de XML
-          </button>
-          <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <BarChart3 size={16} /> Clasificar con Inteligencia Artificial
-          </button>
-        </div>
+        {userRole !== 'client' && (
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button className="btn btn-outline" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)'}}>
+              <Search size={16} /> Extraer Glosas de XML
+            </button>
+            <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <BarChart3 size={16} /> Clasificar con Inteligencia Artificial
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs / Toggle */}

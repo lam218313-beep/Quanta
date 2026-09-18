@@ -671,13 +671,13 @@ function App() {
         {/* TABS PRINCIPALES */}
         <main className="main-content animate-fade-in" style={{animationDelay: '0.1s'}}>
           {activeMainTab === 'propuesta' ? (
-            <PropuestaView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
+            <PropuestaView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'compras' ? (
-            <ComprasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
+            <ComprasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'ventas' ? (
-            <VentasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
+            <VentasView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'procesamiento' ? (
-            <ProcesamientoView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
+            <ProcesamientoView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : activeMainTab === 'exportacion' ? (
             <ExportacionView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
           ) : activeMainTab === 'clientes' && (userRole === 'admin' || userRole === 'accountant') ? (
