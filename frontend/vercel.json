@@ -1,5 +1,0 @@
-{
-  "redirects": [
-    { "source": "/(.*)", "destination": "https://quanta-landing-one.vercel.app/app", "permanent": false }
-  ]
-}
