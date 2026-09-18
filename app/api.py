@@ -36,9 +36,13 @@ from app.brain.routes.documents import router as documents_router
 from app.brain.routes.linking import router as linking_router
 from app.brain.routes.analytics import router as analytics_router
 from app.brain.routes.pdf import router as pdf_router
-from app.brain.routes.sire import router as sire_router
+from app.brain.routes.sire import router as sire_router, credentials_router as sire_credentials_router
 from app.brain.routes.dashboard import router as dashboard_router
 from app.brain.routes.users import router as users_router
+from app.brain.routes.export import router as export_router
+from app.brain.routes.bot import router as bot_router
+from app.brain.routes.facturacion import router as facturacion_router
+from app.brain.routes.processing import router as processing_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -62,8 +66,13 @@ app.include_router(linking_router)
 app.include_router(analytics_router)
 app.include_router(pdf_router)
 app.include_router(sire_router)
+app.include_router(sire_credentials_router)
 app.include_router(dashboard_router)
 app.include_router(users_router)
+app.include_router(export_router)
+app.include_router(bot_router)
+app.include_router(facturacion_router)
+app.include_router(processing_router)
 
 
 @app.get("/health")

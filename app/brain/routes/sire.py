@@ -16,6 +16,22 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/clients", tags=["SIRE"])
 
+credentials_router = APIRouter(tags=["SIRE"])
+
+
+@credentials_router.get("/api/clientes/con-credenciales")
+def get_clientes_con_credenciales():
+    """Devuelve la lista de clientes que tienen usuario_sol, clave_sol y credenciales API configurados."""
+    sb = get_supabase()
+    res = sb.table("clientes").select("id, ruc, razon_social, usuario_sol, client_id_api").execute()
+    clientes_data = res.data or []
+    filtrados = [
+        {"id": c["id"], "ruc": c["ruc"], "razon_social": c["razon_social"]}
+        for c in clientes_data
+        if c.get("usuario_sol") and c.get("client_id_api")
+    ]
+    return {"clientes": filtrados, "total": len(filtrados)}
+
 
 class SireDownloadRequest(BaseModel):
     period: str  # YYYYMM format (e.g., "202401")
