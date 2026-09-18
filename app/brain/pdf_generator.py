@@ -50,7 +50,7 @@ async def _html_to_pdf(
         if has_header_footer:
             pdf_kwargs["header_template"] = header_template or "<span></span>"
             pdf_kwargs["footer_template"] = footer_template or "<span></span>"
-            pdf_kwargs["margin"] = {"top": "80px", "right": "0", "bottom": "50px", "left": "0"}
+            pdf_kwargs["margin"] = {"top": "130px", "right": "0", "bottom": "50px", "left": "0"}
         else:
             pdf_kwargs["margin"] = {"top": "0", "right": "0", "bottom": "0", "left": "0"}
 
