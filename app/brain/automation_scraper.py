@@ -60,15 +60,18 @@ async def run(ruc: str):
         # We just wait for the login to redirect to the Menu URL, and save the base cookies.
         try:
             try:
-                await page.wait_for_url("**/MenuInternet.htm*", timeout=5000)
+                # 8s (era 5s): Railway renderiza el login mas lento que un equipo
+                # local, por latencia de red hacia SUNAT y menos CPU disponible.
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=8000)
                 print("✅ Login successful! Redirected to menu.")
                 found_session = True
             except Exception:
                 if await page.locator("#btnWithOutCode").count() > 0:
                     print("   [Workaround] Authentication screen detected. Clicking 'Continuar sin código'...")
                     await page.click("#btnWithOutCode")
-                
-                await page.wait_for_url("**/MenuInternet.htm*", timeout=15000)
+
+                # 30s (era 15s): mismo margen que arriba, para el mismo motivo.
+                await page.wait_for_url("**/MenuInternet.htm*", timeout=30000)
                 print("✅ Login successful! Redirected to menu.")
                 found_session = True
         except Exception as e:
