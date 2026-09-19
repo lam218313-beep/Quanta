@@ -19,6 +19,54 @@ pasando por el dominio del landing, no directo. Decisión confirmada con
 el usuario: mantener este esquema (para cuando pongan dominio propio,
 sería `<dominio>/app`), no revertir el `base` de Vite.
 
+## Sesión 2026-09-19 (parte 3) — Hueco de la migración a Storage (873 registros)
+
+Al probar el botón de descarga por fila con PROSPERY VIAJES (RUC
+`20482345183`, periodo 202607, Julio 2026), salió "El archivo ya no
+existe en Supabase Storage". Investigado: **distinto** del bug de los 368
+de la parte 2 (ese era de mi corrida local). Este es un hueco real de la
+migración original (commit `336d130`, sesión 1): **la migración solo
+afectó descargas nuevas hacia adelante — nunca se hizo backfill de los
+registros que ya estaban `DESCARGADO` antes del cambio**, y esos seguían
+apuntando al disco efímero de Railway (paths tipo
+`/app/downloads/xml/.../purchases/xml/archivo.xml`), que ya no existe.
+
+- **Alcance real (auditado con `fetch_all_records`, toda la tabla):
+  873 comprobantes en 19 clientes** con `estado_xml`/`estado_pdf =
+  DESCARGADO` pero ruta vieja pre-Storage. Los más afectados: ECOSERVIS
+  3M (225), DJULIETTE EIRL (124), FERNANDEZ GONZALES ROSELLA (110),
+  MAELOS CAR WASH (86), INV. SONRISAS (62), CLINICA DENTAL SANTA INES
+  (60), CORPORACION AUTOMOTRIZ TRUX RACING (52), REVIVE FISIOTERAPIA
+  (43), OSTEOVIDA (38), MEDRANO GARCIA ADOLFO (19), PROSPERY VIAJES
+  (17), y 8 clientes más con menos de 15 cada uno.
+- **No recuperable** (a diferencia de los 368 de la parte 2): esos
+  archivos nunca se subieron a Storage y el disco de Railway que los
+  tenía ya se borró en deploys posteriores. Los datos reales (montos,
+  fechas) siguen en `sire_preliminar_compras`/`ventas`; solo el XML/PDF
+  físico se perdió.
+- **Se resetearon los 873 a `PENDIENTE`** (ruta_xml/ruta_pdf → null,
+  reintentos → 0, error_log explicando el motivo) para que se vuelvan a
+  descargar de SUNAT y esta vez sí queden en Storage. Verificado:
+  0 registros con ruta vieja restantes tras el reset.
+- **Pendiente:** falta correr la re-descarga real para estos 19 clientes.
+  Como Railway sigue bloqueado por SUNAT (ver diagnóstico de IP en la
+  parte 2), esto requeriría correrlo localmente cliente por cliente,
+  igual que se hizo con DJULIETTE hoy.
+- **Aclaraciones del usuario que quedan como criterio para el futuro:**
+  - Los PDFs no importan recuperarlos tal cual — se regeneran solos a
+    partir del XML (`pdf_from_xml_service.py`) o el scraper los trae
+    directo de SUNAT junto con el XML; no hace falta preservar el PDF
+    viejo.
+  - Preocupación por saturar el servidor con la descarga automática:
+    confirmado en código que **no hay nada corriendo automático hoy**.
+    Existe `app/brain/scheduler/daily_sync.py` (pipeline diario con
+    throttling de 15s entre clientes) pero está `enabled=False` y **no
+    está registrado en ningún lado del backend en ejecución** (ni
+    APScheduler ni cron) — es código muerto por ahora. El único disparo
+    real es manual, vía el botón, un cliente/periodo a la vez. Dentro de
+    una corrida, `download_xml_scraper.py` procesa un comprobante a la
+    vez con pausas de 0.3–3s, sin nada en paralelo.
+
 ## Sesión 2026-09-19 (parte 2) — Verificación real del pipeline de Storage
 
 1. **Se disparó una autenticación y descarga REAL contra SUNAT** (cliente
