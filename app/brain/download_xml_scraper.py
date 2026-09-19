@@ -468,7 +468,41 @@ async def _search_individual(
         # Bug Fix 1 & 2: mapeo extendido de tipos + timeouts aumentados
         if is_angular:
             try:
-                dropdown = frame.locator("p-dropdown[formcontrolname='tipoComprobanteI']")
+                # El formcontrolname exacto ('tipoComprobanteI') puede no existir si
+                # SUNAT cambió el nombre del control o si el dropdown aún no terminó
+                # de renderizar tras marcar Recibido/Emitido. Intentamos primero el
+                # nombre conocido y, si no aparece, cualquier control cuyo nombre
+                # contenga 'tipoComprobante' (case-insensitive) antes de rendirnos.
+                dropdown = None
+                for attempt in range(2):  # el Angular app puede tardar en renderizar bajo carga
+                    for tipo_sel in (
+                        "p-dropdown[formcontrolname='tipoComprobanteI']",
+                        "p-dropdown[formcontrolname*='tipoComprobante' i]",
+                    ):
+                        candidate = frame.locator(tipo_sel)
+                        try:
+                            await candidate.first.wait_for(state="visible", timeout=8000)
+                            dropdown = candidate.first
+                            break
+                        except Exception:
+                            continue
+                    if dropdown is not None:
+                        break
+                    await asyncio.sleep(1)
+
+                if dropdown is None:
+                    # Evidencia: qué formcontrolname existen realmente en la página,
+                    # para diagnosticar sin adivinar en el próximo intento.
+                    try:
+                        all_fcn = await frame.evaluate(
+                            "Array.from(document.querySelectorAll('[formcontrolname]'))"
+                            ".map(e => e.tagName + ':' + e.getAttribute('formcontrolname'))"
+                        )
+                        print(f"   WARN: dropdown tipoComprobante no encontrado. Controles en pagina: {all_fcn}")
+                    except Exception:
+                        pass
+                    raise RuntimeError("tipoComprobante dropdown not found on page")
+
                 await dropdown.click(timeout=5000)  # Bug 2: aumentado de 2000 a 5000ms
 
                 # Bug 2: esperar explícitamente a que el panel de opciones sea visible
