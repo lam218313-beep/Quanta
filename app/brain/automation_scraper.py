@@ -30,23 +30,33 @@ async def run(ruc: str):
 
         print(f"🚀 Opening SUNAT Login Page for RUC {ruc}...")
         await page.goto(SUNAT_LOGIN_URL)
-        await page.wait_for_load_state('domcontentloaded')
-        
+        # networkidle (no solo domcontentloaded): el login es una app Angular
+        # que debe hidratarse (cargar y conectar sus manejadores de eventos JS)
+        # antes de que el boton realmente reaccione a un clic. Bajo la CPU mas
+        # limitada de Railway, domcontentloaded llegaba antes de que Angular
+        # terminara de inicializar, asi que el clic caia en un boton todavia
+        # "muerto" y la peticion de login nunca se enviaba (confirmado con un
+        # screenshot en el momento del timeout: formulario intacto, sin
+        # ningun error ni CAPTCHA).
+        await page.wait_for_load_state('networkidle')
+
         # Intentar autocompletado si hay credenciales
         _ensure_import_path()
         from app.brain.db.supabase_client import get_supabase
         supabase = get_supabase()
         resp = supabase.table("clientes").select("usuario_sol, clave_sol").eq("ruc", ruc).execute()
-        
+
         if resp.data and resp.data[0].get("usuario_sol") and resp.data[0].get("clave_sol"):
             print("🔑 Credentials found in database! Auto-filling form...")
             try:
                 usuario = resp.data[0]["usuario_sol"]
                 clave = resp.data[0]["clave_sol"]
-                
+
                 await page.fill("#txtRuc", ruc)
                 await page.fill("#txtUsuario", usuario)
                 await page.fill("#txtContrasena", clave)
+                # Confirmar que Angular ya conecto el boton antes de clickear.
+                await page.wait_for_selector("#btnAceptar:not([disabled])", timeout=10000)
                 await page.click("#btnAceptar")
                 print("   Login button clicked. Waiting for response...")
             except Exception as e:
@@ -77,36 +87,6 @@ async def run(ruc: str):
         except Exception as e:
             print(f"⚠️ Did not reach menu URL in time, or CAPTCHA required: {e}")
             found_session = False
-
-            # DIAGNOSTICO TEMPORAL: capturar que le muestra SUNAT a esta IP en
-            # el momento exacto del timeout (screenshot + HTML), subido a
-            # Storage para poder revisarlo fuera de Railway. Quitar una vez
-            # diagnosticado el problema real detras de este timeout.
-            try:
-                import time
-                ts = int(time.time())
-                screenshot_bytes = await page.screenshot(full_page=True)
-                html = await page.content()
-                current_url = page.url
-                print(f"   [DIAG] URL en el momento del timeout: {current_url}")
-
-                _ensure_import_path()
-                from app.brain.db.supabase_client import get_supabase
-                diag_supabase = get_supabase()
-                png_path = f"_diagnostics/{ruc}_{ts}.png"
-                html_path = f"_diagnostics/{ruc}_{ts}.html"
-                diag_supabase.storage.from_("comprobantes-fisicos").upload(
-                    path=png_path, file=screenshot_bytes,
-                    file_options={"content-type": "image/png", "upsert": "true"},
-                )
-                diag_supabase.storage.from_("comprobantes-fisicos").upload(
-                    path=html_path, file=html.encode("utf-8"),
-                    file_options={"content-type": "text/html", "upsert": "true"},
-                )
-                print(f"   [DIAG] Screenshot subido a: {png_path}")
-                print(f"   [DIAG] HTML subido a: {html_path}")
-            except Exception as diag_err:
-                print(f"   [DIAG] No se pudo capturar diagnostico: {diag_err}")
 
         try:
             # Extract Cookies Final

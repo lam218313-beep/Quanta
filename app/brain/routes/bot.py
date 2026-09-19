@@ -468,35 +468,6 @@ async def trigger_classify_ai(req: BotRequest, background_tasks: BackgroundTasks
     return {"status": "started", "message": f"Started AI Classifier bot for {req.ruc} - {req.periodo or 'todos los periodos'}", "task_id": task_id}
 
 
-@router.get("/diag-network")
-async def diag_network():
-    """DIAGNOSTICO TEMPORAL: prueba conectividad HTTP cruda de Railway hacia
-    SUNAT, sin Playwright de por medio, para descartar/confirmar un problema
-    de red a nivel de infraestructura. Quitar una vez diagnosticado."""
-    import time
-    import httpx
-
-    targets = {
-        "sunat_menu": "https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm",
-        "sunat_seguridad": "https://api-seguridad.sunat.gob.pe/",
-    }
-    results = {}
-    for name, url in targets.items():
-        t0 = time.time()
-        try:
-            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-                r = await client.get(url)
-            results[name] = {
-                "status": r.status_code,
-                "elapsed_s": round(time.time() - t0, 2),
-                "final_url": str(r.url),
-                "body_len": len(r.content),
-            }
-        except Exception as e:
-            results[name] = {"error": f"{type(e).__name__}: {e}", "elapsed_s": round(time.time() - t0, 2)}
-    return results
-
-
 @router.get("/logs/{task_id}")
 def get_task_logs(task_id: str):
     log_file = LOGS_DIR / f"{task_id}.log"
