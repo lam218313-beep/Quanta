@@ -43,10 +43,16 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quanta-production-
 
 function App() {
   const [clientes, setClientes] = useState([])
-  const [selectedCliente, setSelectedCliente] = useState('')
-  const [selectedPeriodo, setSelectedPeriodo] = useState('')
+  const [selectedCliente, setSelectedCliente] = useState(() => {
+    try { return localStorage.getItem('quanta_selectedCliente') || '' } catch { return '' }
+  })
+  const [selectedPeriodo, setSelectedPeriodo] = useState(() => {
+    try { return localStorage.getItem('quanta_selectedPeriodo') || '' } catch { return '' }
+  })
   const [activeStep, setActiveStep] = useState(1)
-  const [activeMainTab, setActiveMainTab] = useState('contabilidad')
+  const [activeMainTab, setActiveMainTab] = useState(() => {
+    try { return localStorage.getItem('quanta_activeMainTab') || 'dashboard' } catch { return 'dashboard' }
+  })
   
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
@@ -153,6 +159,30 @@ function App() {
       setClientSearchText('')
     }
   }, [selectedCliente, clientes])
+
+  // Recordar la pestaña, cliente y periodo activos para que sobrevivan a un reload.
+  useEffect(() => {
+    try { localStorage.setItem('quanta_selectedCliente', selectedCliente || '') } catch {}
+  }, [selectedCliente])
+
+  useEffect(() => {
+    try { localStorage.setItem('quanta_selectedPeriodo', selectedPeriodo || '') } catch {}
+  }, [selectedPeriodo])
+
+  useEffect(() => {
+    try { localStorage.setItem('quanta_activeMainTab', activeMainTab || '') } catch {}
+  }, [activeMainTab])
+
+  // Si la pestaña recordada ya no está permitida para este rol (ej. cambio de usuario
+  // en el mismo navegador), no dejar la pantalla en blanco — volver al dashboard.
+  useEffect(() => {
+    if (!userRole) return
+    if (activeMainTab === 'clientes' && !(userRole === 'admin' || userRole === 'accountant')) {
+      setActiveMainTab('dashboard')
+    } else if (activeMainTab === 'procesamiento' && userRole === 'client') {
+      setActiveMainTab('dashboard')
+    }
+  }, [userRole, activeMainTab])
 
   useEffect(() => {
     if (terminalRef.current) {
