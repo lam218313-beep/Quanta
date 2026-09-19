@@ -118,15 +118,21 @@ export default function ComprasView({ currentClient, selectedPeriodo, userRole }
     (r.nro_cp || '').includes(searchTerm)
   );
 
+  // El backend (sire_bot_orchestrator.py / sync_files.py) escribe estos estados reales:
+  // 'DESCARGADO' (ok), 'PENDIENTE'/'ERROR' (aun no), 'NO_DESCARGABLE'/'NO_EXISTE' (SUNAT no lo ofrece).
+  // 'COMPLETADO' nunca se escribe — usarlo aqui hacia que las tarjetas/iconos nunca reflejaran una descarga real.
+  const isDownloaded = (status) => status === 'DESCARGADO' || status === 'COMPLETADO';
+  const isUnavailable = (status) => status === 'NO_DESCARGABLE' || status === 'NO_EXISTE';
+
   const totalSoles = data.reduce((acc, curr) => acc + Number(curr.total_cp || 0), 0);
   const comprobantesCount = data.length;
-  const processedCount = data.filter(r => r.estado_xml === 'COMPLETADO' || r.estado_pdf === 'COMPLETADO').length;
+  const processedCount = data.filter(r => isDownloaded(r.estado_xml) || isDownloaded(r.estado_pdf)).length;
   const pendientesCount = comprobantesCount - processedCount;
 
   const getStatusIcon = (status) => {
-    if (status === 'COMPLETADO') return <Check size={16} color="#10b981" />;
-    if (status === 'PENDIENTE') return <Activity size={16} color="#f59e0b" />;
-    if (status === 'ERROR') return <X size={16} color="#ef4444" />;
+    if (isDownloaded(status)) return <Check size={16} color="#10b981" />;
+    if (status === 'PENDIENTE' || status === 'ERROR') return <Activity size={16} color="#f59e0b" />;
+    if (isUnavailable(status)) return <X size={16} color="#94a3b8" />;
     return <span style={{fontSize: '0.7rem', color: '#94a3b8'}}>-</span>;
   };
 
