@@ -1,116 +1,48 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { DownloadCloud, Database, Search, DollarSign, FileText, Activity, CheckCircle, FileCode, FileIcon, Check, X, Loader2, Terminal, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DownloadCloud, Database, Search, DollarSign, FileText, Activity, CheckCircle, FileCode, FileIcon, Check, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quanta-production-07d7.up.railway.app';
 
 export default function ComprasView({ currentClient, selectedPeriodo, userRole }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [taskRunning, setTaskRunning] = useState(false);
-  const [taskStage, setTaskStage] = useState('');
-  const [taskLog, setTaskLog] = useState('');
-  const [showLog, setShowLog] = useState(false);
-  const intervalRef = useRef(null);
-  const logBoxRef = useRef(null);
-
-  const fetchData = useCallback(async () => {
-    if (!currentClient || !selectedPeriodo) {
-      setData([]);
-      return;
-    }
-    setLoading(true);
-
-    const [comprasRes, fisicosRes] = await Promise.all([
-      supabase.from('sire_preliminar_compras').select('*').eq('cliente_id', currentClient.id).eq('periodo', selectedPeriodo),
-      supabase.from('sire_comprobantes_fisicos').select('*').eq('cliente_id', currentClient.id).eq('periodo', selectedPeriodo).eq('tipo_libro', 'COMPRAS')
-    ]);
-
-    if (comprasRes.error) console.error('Error fetching compras:', comprasRes.error);
-    if (fisicosRes.error) console.error('Error fetching fisicos:', fisicosRes.error);
-
-    const compras = comprasRes.data || [];
-    const fisicos = fisicosRes.data || [];
-
-    const combined = compras.map(c => {
-      const fisico = fisicos.find(f => f.preliminar_compra_id === c.id);
-      return {
-        ...c,
-        estado_xml: fisico?.estado_xml || 'NO_INICIADO',
-        estado_pdf: fisico?.estado_pdf || 'NO_INICIADO',
-        ruta_xml: fisico?.ruta_xml,
-        ruta_pdf: fisico?.ruta_pdf,
-      };
-    });
-
-    setData(combined);
-    setLoading(false);
-  }, [currentClient, selectedPeriodo]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
-
   useEffect(() => {
-    if (taskLog && logBoxRef.current) logBoxRef.current.scrollTop = logBoxRef.current.scrollHeight;
-  }, [taskLog]);
-
-  const runTaskToCompletion = (taskId) => new Promise((resolve) => {
-    intervalRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/bot/logs/${taskId}`);
-        const body = await res.json();
-        setTaskLog(body.logs || '');
-        if (!body.is_running) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-          resolve();
-        }
-      } catch (e) {
-        console.error('Error polling task logs:', e);
+    const fetchData = async () => {
+      if (!currentClient || !selectedPeriodo) {
+        setData([]);
+        return;
       }
-    }, 2500);
-  });
+      setLoading(true);
+      
+      const [comprasRes, fisicosRes] = await Promise.all([
+        supabase.from('sire_preliminar_compras').select('*').eq('cliente_id', currentClient.id).eq('periodo', selectedPeriodo),
+        supabase.from('sire_comprobantes_fisicos').select('*').eq('cliente_id', currentClient.id).eq('periodo', selectedPeriodo).eq('tipo_libro', 'COMPRAS')
+      ]);
 
-  const startTask = async (endpoint, payload) => {
-    const res = await fetch(`${API_BASE_URL}/api/bot/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const body = await res.json();
-    if (!res.ok) throw new Error(body.detail || 'No se pudo iniciar la tarea.');
-    return body.task_id;
-  };
+      if (comprasRes.error) console.error('Error fetching compras:', comprasRes.error);
+      if (fisicosRes.error) console.error('Error fetching fisicos:', fisicosRes.error);
 
-  const handleAutenticarDescargar = async () => {
-    if (!currentClient || !selectedPeriodo) {
-      alert('Selecciona un cliente y un periodo primero.');
-      return;
-    }
-    setTaskRunning(true);
-    setTaskLog('');
-    setShowLog(true);
-    try {
-      setTaskStage('Autenticando en SUNAT...');
-      const loginTaskId = await startTask('automation-login', { ruc: currentClient.ruc });
-      await runTaskToCompletion(loginTaskId);
+      const compras = comprasRes.data || [];
+      const fisicos = fisicosRes.data || [];
 
-      setTaskStage('Descargando comprobantes físicos...');
-      const dlTaskId = await startTask('download-fisicos', { ruc: currentClient.ruc, periodo: selectedPeriodo, tipo_libro: 'COMPRAS' });
-      await runTaskToCompletion(dlTaskId);
+      const combined = compras.map(c => {
+        const fisico = fisicos.find(f => f.preliminar_compra_id === c.id);
+        return {
+          ...c,
+          estado_xml: fisico?.estado_xml || 'NO_INICIADO',
+          estado_pdf: fisico?.estado_pdf || 'NO_INICIADO',
+          ruta_xml: fisico?.ruta_xml,
+          ruta_pdf: fisico?.ruta_pdf,
+        };
+      });
 
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Error al autenticar/descargar físicos.');
-    } finally {
-      setTaskRunning(false);
-      setTaskStage('');
-    }
-  };
+      setData(combined);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [currentClient, selectedPeriodo]);
 
   const filteredData = data.filter(r => 
     (r.razon_social?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
@@ -139,27 +71,13 @@ export default function ComprasView({ currentClient, selectedPeriodo, userRole }
           <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem'}}>Gestión de comprobantes físicos y electrónicos de compras.</p>
         </div>
         {userRole !== 'client' && (
-          <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
-            {taskLog && (
-              <button className="btn btn-outline" style={{padding: '0.6rem 0.8rem'}} onClick={() => setShowLog(!showLog)} title="Ver registro">
-                <Terminal size={16} /> {showLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            )}
-            <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}} onClick={handleAutenticarDescargar} disabled={taskRunning}>
-              {taskRunning ? <Loader2 size={16} className="spin" /> : <DownloadCloud size={16} />}
-              {taskRunning ? (taskStage || 'Procesando...') : 'Autenticar y Descargar Físicos'}
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <DownloadCloud size={16} /> Autenticar y Descargar Físicos
             </button>
           </div>
         )}
       </div>
-
-      {showLog && (
-        <div className="glass-panel" style={{padding: '1rem', fontFamily: 'monospace', fontSize: '0.78rem'}}>
-          <div ref={logBoxRef} style={{maxHeight: '180px', overflowY: 'auto', color: '#94a3b8', whiteSpace: 'pre-wrap', lineHeight: 1.5}}>
-            {taskLog || 'Esperando salida del bot...'}
-          </div>
-        </div>
-      )}
 
       {/* Metrics Cards */}
       <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem'}}>
