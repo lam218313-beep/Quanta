@@ -8,6 +8,15 @@
         "value": "inter",
         "createdAt": "2026-09-18T18:46:31.925Z",
         "reason": "pre-existing app-wide typography from index.css (body font), kept for consistency across all 10 views; not a new choice for this redesign"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/App.jsx"
+        ],
+        "createdAt": "2026-09-19T01:21:06.869Z",
+        "reason": "Toast notification severity border (success/danger/warning/info) - functional status indicator, not a decorative AI-generated card accent. Sanctioned exception, re-affirmed this session."
       }
     ]
   }
