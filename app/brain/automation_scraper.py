@@ -77,7 +77,37 @@ async def run(ruc: str):
         except Exception as e:
             print(f"⚠️ Did not reach menu URL in time, or CAPTCHA required: {e}")
             found_session = False
-        
+
+            # DIAGNOSTICO TEMPORAL: capturar que le muestra SUNAT a esta IP en
+            # el momento exacto del timeout (screenshot + HTML), subido a
+            # Storage para poder revisarlo fuera de Railway. Quitar una vez
+            # diagnosticado el problema real detras de este timeout.
+            try:
+                import time
+                ts = int(time.time())
+                screenshot_bytes = await page.screenshot(full_page=True)
+                html = await page.content()
+                current_url = page.url
+                print(f"   [DIAG] URL en el momento del timeout: {current_url}")
+
+                _ensure_import_path()
+                from app.brain.db.supabase_client import get_supabase
+                diag_supabase = get_supabase()
+                png_path = f"_diagnostics/{ruc}_{ts}.png"
+                html_path = f"_diagnostics/{ruc}_{ts}.html"
+                diag_supabase.storage.from_("comprobantes-fisicos").upload(
+                    path=png_path, file=screenshot_bytes,
+                    file_options={"content-type": "image/png", "upsert": "true"},
+                )
+                diag_supabase.storage.from_("comprobantes-fisicos").upload(
+                    path=html_path, file=html.encode("utf-8"),
+                    file_options={"content-type": "text/html", "upsert": "true"},
+                )
+                print(f"   [DIAG] Screenshot subido a: {png_path}")
+                print(f"   [DIAG] HTML subido a: {html_path}")
+            except Exception as diag_err:
+                print(f"   [DIAG] No se pudo capturar diagnostico: {diag_err}")
+
         try:
             # Extract Cookies Final
             cookies = await context.cookies()
