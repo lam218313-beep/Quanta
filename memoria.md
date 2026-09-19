@@ -2,6 +2,23 @@
 
 _Actualizado: 2026-09-19 (sesión 2)_
 
+## ⚠️ URL correcta para entrar al sistema (cambió el 2026-09-18)
+
+**No entrar directo a `https://quanta-app-chi.vercel.app/`** — desde el
+commit `1ec20ed` ("Add marketing landing site, nested under /app on the
+same domain") esa URL da pantalla blanca (404 en los assets JS/CSS)
+porque el frontend se compila con `base: '/app/'` en `vite.config.js`,
+asumiendo que siempre se sirve detrás del proxy del landing.
+
+**URL correcta: `https://quanta-landing-one.vercel.app/app`** — el
+landing (`landing/vercel.json`) reescribe `/app/*` hacia
+`quanta-app-chi.vercel.app/*` de forma transparente. Landing = página de
+marketing (carpeta `landing/`), app-chi = el sistema real (carpeta
+`frontend/`); lo único que cambió es que ahora hay que entrar al sistema
+pasando por el dominio del landing, no directo. Decisión confirmada con
+el usuario: mantener este esquema (para cuando pongan dominio propio,
+sería `<dominio>/app`), no revertir el `base` de Vite.
+
 ## Sesión 2026-09-19 (parte 2) — Verificación real del pipeline de Storage
 
 1. **Se disparó una autenticación y descarga REAL contra SUNAT** (cliente
