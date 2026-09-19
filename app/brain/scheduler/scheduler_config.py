@@ -17,8 +17,9 @@ class SchedulerConfig:
     """Configuration for the daily sync scheduler."""
 
     # ── Schedule ────────────────────────────────────────────────
-    # Hour (0-23) at which the daily sync fires.  Default 6 AM.
-    run_hour: int = int(os.getenv("SCHEDULER_HOUR", "6"))
+    # Hour (0-23) at which the daily sync fires.  Default 3 AM, so a full
+    # run across every client has until business hours to finish.
+    run_hour: int = int(os.getenv("SCHEDULER_HOUR", "3"))
     run_minute: int = int(os.getenv("SCHEDULER_MINUTE", "0"))
 
     # ── Pipeline steps ──────────────────────────────────────────
@@ -50,8 +51,9 @@ class SchedulerConfig:
     client_rucs: list[str] = field(default_factory=list)
 
     # ── State ───────────────────────────────────────────────────
-    # Whether the scheduler is currently enabled.
-    enabled: bool = False
+    # Whether the scheduler is currently enabled. Toggle via env var so it
+    # can be turned off in Railway without a redeploy.
+    enabled: bool = os.getenv("SCHEDULER_ENABLED", "true").lower() in ("1", "true", "yes")
 
 
 # Singleton instance — importable throughout the app.

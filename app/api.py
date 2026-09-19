@@ -4,7 +4,10 @@ The AI Orchestration Layer for Peruvian Accounting Automation
 
 Run with:  uvicorn app.api:app --reload --port 8000  (from the project root)
 """
+import subprocess
 import sys
+from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 # The route modules in app/brain/routes use two different import conventions:
@@ -44,12 +47,62 @@ from app.brain.routes.bot import router as bot_router
 from app.brain.routes.facturacion import router as facturacion_router
 from app.brain.routes.processing import router as processing_router
 from app.brain.routes.client_auth import router as client_auth_router
+from app.brain.scheduler.scheduler_config import get_scheduler_config
+
+
+def _launch_daily_sync():
+    """Fire-and-forget subprocess launch for the scheduled daily sync.
+
+    Runs as its own process (like every other bot task in bot.py) instead of
+    calling run_daily_sync() in-process — that pipeline can take hours across
+    every client, and awaiting it here would block the API's event loop for
+    the whole run, including health checks.
+    """
+    log_dir = _ROOT / "app" / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / f"daily_sync_scheduled_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_fh = open(log_path, "w", encoding="utf-8")
+    subprocess.Popen(
+        [sys.executable, "app/brain/scheduler/daily_sync.py"],
+        cwd=str(_ROOT),
+        stdout=log_fh,
+        stderr=log_fh,
+    )
+    log_fh.close()
+    print(f"[scheduler] Daily sync launched, logging to {log_path}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = None
+    config = get_scheduler_config()
+    if config.enabled:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.cron import CronTrigger
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            _launch_daily_sync,
+            trigger=CronTrigger(hour=config.run_hour, minute=config.run_minute),
+            id="daily_sync",
+        )
+        scheduler.start()
+        print(f"[scheduler] Daily sync cron active — fires at {config.run_hour:02d}:{config.run_minute:02d} daily.")
+    else:
+        print("[scheduler] Daily sync cron disabled (SCHEDULER_ENABLED=false).")
+
+    yield
+
+    if scheduler:
+        scheduler.shutdown(wait=False)
+
 
 # Initialize FastAPI app
 app = FastAPI(
     title="Contax Brain API",
     description="AI-powered accounting automation for Peru",
-    version="0.2.0"
+    version="0.2.0",
+    lifespan=lifespan,
 )
 
 # CORS Configuration (for Frontend)
