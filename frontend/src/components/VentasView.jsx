@@ -38,6 +38,7 @@ export default function VentasView({ currentClient, selectedPeriodo, userRole })
       const fisico = fisicos.find(f => f.preliminar_venta_id === c.id);
       return {
         ...c,
+        fisico_id: fisico?.id,
         estado_xml: fisico?.estado_xml || 'NO_INICIADO',
         estado_pdf: fisico?.estado_pdf || 'NO_INICIADO',
         ruta_xml: fisico?.ruta_xml,
@@ -112,8 +113,34 @@ export default function VentasView({ currentClient, selectedPeriodo, userRole })
     }
   };
 
-  const filteredData = data.filter(r => 
-    (r.razon_social?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+  const handleDownloadFile = async (fisicoId, tipo) => {
+    if (!fisicoId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/bot/comprobante-file/${fisicoId}?tipo=${tipo}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || 'No se pudo descargar el archivo.');
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : `comprobante.${tipo}`;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error al descargar el archivo.');
+    }
+  };
+
+  const filteredData = data.filter(r =>
+    (r.razon_social?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (r.nro_doc_identidad || '').includes(searchTerm) ||
     (r.nro_cp || '').includes(searchTerm)
   );
@@ -261,10 +288,22 @@ export default function VentasView({ currentClient, selectedPeriodo, userRole })
                     </td>
                     <td style={{padding: '0.75rem 0.5rem', textAlign: 'right'}}>
                       <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
-                        <button className="btn btn-outline" style={{padding: '0.3rem', borderColor: 'rgba(255,255,255,0.15)', color: '#94a3b8'}} title="Descargar XML">
+                        <button
+                          className="btn btn-outline"
+                          style={{padding: '0.3rem', borderColor: 'rgba(255,255,255,0.15)', color: '#94a3b8', opacity: isDownloaded(row.estado_xml) ? 1 : 0.35, cursor: isDownloaded(row.estado_xml) ? 'pointer' : 'not-allowed'}}
+                          title={isDownloaded(row.estado_xml) ? 'Descargar XML' : 'XML no disponible'}
+                          disabled={!isDownloaded(row.estado_xml)}
+                          onClick={() => handleDownloadFile(row.fisico_id, 'xml')}
+                        >
                           <FileCode size={14} />
                         </button>
-                        <button className="btn btn-outline" style={{padding: '0.3rem', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171'}} title="Descargar PDF">
+                        <button
+                          className="btn btn-outline"
+                          style={{padding: '0.3rem', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171', opacity: isDownloaded(row.estado_pdf) ? 1 : 0.35, cursor: isDownloaded(row.estado_pdf) ? 'pointer' : 'not-allowed'}}
+                          title={isDownloaded(row.estado_pdf) ? 'Descargar PDF' : 'PDF no disponible'}
+                          disabled={!isDownloaded(row.estado_pdf)}
+                          onClick={() => handleDownloadFile(row.fisico_id, 'pdf')}
+                        >
                           <FileIcon size={14} />
                         </button>
                       </div>

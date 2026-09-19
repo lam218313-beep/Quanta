@@ -17,6 +17,7 @@ import traceback
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.brain.db.supabase_client import get_supabase
@@ -480,6 +481,35 @@ def get_task_logs(task_id: str):
         content = f.read()
 
     return {"task_id": task_id, "logs": content, "is_running": is_running}
+
+
+@router.get("/comprobante-file/{fisico_id}")
+def download_comprobante_file(fisico_id: str, tipo: str):
+    """Sirve el XML o PDF ya descargado de un comprobante físico puntual."""
+    if tipo not in ("xml", "pdf"):
+        raise HTTPException(status_code=400, detail="tipo debe ser 'xml' o 'pdf'")
+
+    supabase = get_supabase()
+    res = supabase.table("sire_comprobantes_fisicos") \
+        .select("ruta_xml, ruta_pdf, serie, numero") \
+        .eq("id", fisico_id).limit(1).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Comprobante no encontrado")
+
+    row = res.data[0]
+    ruta = row.get("ruta_xml") if tipo == "xml" else row.get("ruta_pdf")
+    if not ruta:
+        raise HTTPException(status_code=404, detail="El archivo aún no está disponible para este comprobante")
+
+    path = Path(ruta)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="El archivo ya no existe en el servidor")
+
+    media_type = "application/zip" if path.suffix.lower() == ".zip" else (
+        "application/pdf" if tipo == "pdf" else "application/xml"
+    )
+    filename = f"{row.get('serie') or ''}-{row.get('numero') or ''}{path.suffix}"
+    return FileResponse(path=str(path), filename=filename, media_type=media_type)
 
 
 @router.get("/sync-files")
