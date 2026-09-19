@@ -12,6 +12,37 @@ if str(root) not in sys.path:
 from app.brain.db.supabase_client import get_supabase
 from app.brain.download_xml_scraper import CpeQuery, run_batch
 
+STORAGE_BUCKET = "comprobantes-fisicos"
+
+
+def _upload_to_storage(supabase, local_path: str, cliente_id: str, periodo: str, tipo_libro: str) -> str | None:
+    """Sube un XML/PDF recien descargado al bucket persistente y devuelve su ruta en Storage.
+
+    El disco de Railway es efimero y se borra en cada deploy; Storage es la
+    fuente de verdad real para estos archivos. Si la subida falla, devuelve
+    None y el llamador conserva la ruta local (se perdera en el proximo
+    deploy, pero no se pierde el resultado de la corrida de hoy).
+    """
+    try:
+        local = Path(local_path)
+        content = local.read_bytes()
+        storage_path = f"{cliente_id}/{periodo}/{tipo_libro}/{local.name}"
+        suffix = local.suffix.lower()
+        content_type = (
+            "application/pdf" if suffix == ".pdf"
+            else "application/zip" if suffix == ".zip"
+            else "application/xml"
+        )
+        supabase.storage.from_(STORAGE_BUCKET).upload(
+            path=storage_path,
+            file=content,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        return storage_path
+    except Exception as e:
+        print(f"   [WARN] No se pudo subir {local_path} a Supabase Storage: {e}")
+        return None
+
 async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xml", headless: bool = False, ruc: str = None, periodo: str = None, tipo_libro: str = None):
     """
     Busca comprobantes físicos pendientes en la base de datos, extrae la data preliminar
@@ -181,18 +212,22 @@ async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xm
                 for ruta in paths:
                     ruta_lower = ruta.lower()
                     if ruta_lower.endswith(".pdf"):
-                        update_data["estado_pdf"] = "DESCARGADO"
-                        update_data["ruta_pdf"] = ruta
+                        is_pdf = True
                     elif ruta_lower.endswith(".xml") or ruta_lower.endswith(".zip"):
-                        update_data["estado_xml"] = "DESCARGADO"
-                        update_data["ruta_xml"] = ruta
+                        is_pdf = False
                     else:
-                        if "/pdf/" in ruta.replace("\\", "/") or "\\pdf\\" in ruta:
-                            update_data["estado_pdf"] = "DESCARGADO"
-                            update_data["ruta_pdf"] = ruta
-                        else:
-                            update_data["estado_xml"] = "DESCARGADO"
-                            update_data["ruta_xml"] = ruta
+                        is_pdf = "/pdf/" in ruta.replace("\\", "/") or "\\pdf\\" in ruta
+
+                    stored_path = _upload_to_storage(
+                        supabase, ruta, db_record["cliente_id"], db_record["periodo"], db_record["tipo_libro"]
+                    ) or ruta
+
+                    if is_pdf:
+                        update_data["estado_pdf"] = "DESCARGADO"
+                        update_data["ruta_pdf"] = stored_path
+                    else:
+                        update_data["estado_xml"] = "DESCARGADO"
+                        update_data["ruta_xml"] = stored_path
 
             elif status == "not_found":
                 # El comprobante no aparece en SUNAT en absoluto

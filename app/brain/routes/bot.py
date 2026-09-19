@@ -16,8 +16,7 @@ import threading
 import traceback
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Form, Response
 from pydantic import BaseModel
 
 from app.brain.db.supabase_client import get_supabase
@@ -485,7 +484,12 @@ def get_task_logs(task_id: str):
 
 @router.get("/comprobante-file/{fisico_id}")
 def download_comprobante_file(fisico_id: str, tipo: str):
-    """Sirve el XML o PDF ya descargado de un comprobante físico puntual."""
+    """Sirve el XML o PDF de un comprobante físico desde Supabase Storage.
+
+    El disco local de Railway es efímero (se borra en cada deploy), así que
+    sire_bot_orchestrator.py sube cada archivo al bucket 'comprobantes-fisicos'
+    apenas se descarga y guarda esa ruta de Storage en ruta_xml/ruta_pdf.
+    """
     if tipo not in ("xml", "pdf"):
         raise HTTPException(status_code=400, detail="tipo debe ser 'xml' o 'pdf'")
 
@@ -501,15 +505,21 @@ def download_comprobante_file(fisico_id: str, tipo: str):
     if not ruta:
         raise HTTPException(status_code=404, detail="El archivo aún no está disponible para este comprobante")
 
-    path = Path(ruta)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="El archivo ya no existe en el servidor")
+    suffix = Path(ruta).suffix.lower()
+    try:
+        content = supabase.storage.from_("comprobantes-fisicos").download(ruta)
+    except Exception:
+        raise HTTPException(status_code=404, detail="El archivo ya no existe en Supabase Storage")
 
-    media_type = "application/zip" if path.suffix.lower() == ".zip" else (
+    media_type = "application/zip" if suffix == ".zip" else (
         "application/pdf" if tipo == "pdf" else "application/xml"
     )
-    filename = f"{row.get('serie') or ''}-{row.get('numero') or ''}{path.suffix}"
-    return FileResponse(path=str(path), filename=filename, media_type=media_type)
+    filename = f"{row.get('serie') or ''}-{row.get('numero') or ''}{suffix}"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/sync-files")
