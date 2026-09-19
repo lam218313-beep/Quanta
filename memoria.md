@@ -19,6 +19,71 @@ pasando por el dominio del landing, no directo. Decisión confirmada con
 el usuario: mantener este esquema (para cuando pongan dominio propio,
 sería `<dominio>/app`), no revertir el `base` de Vite.
 
+## Sesión 2026-09-19 (parte 4) — RESUELTO: el bug real del login SUNAT en Railway
+
+El usuario cuestionó correctamente la hipótesis de "IP de datacenter
+bloqueada" de la parte 2 ("no puede ser vía local, antes funcionaba en
+la nube") y pidió usar los conectores/CLIs ya autenticados (Vercel sí
+estaba logueado vía `vercel` CLI; Railway CLI existe pero no estaba
+autenticado en esta sesión — quedó pendiente que el usuario corra
+`railway login`). Sin necesidad de esperar eso, se investigó a fondo con
+despliegues reales a Railway:
+
+1. Aumentar los timeouts de `automation_scraper.py` (5s→8s, 15s→30s) **no
+   resolvió nada** — ni con 30s reales llegaba al menú. Esto descartó
+   "SUNAT solo renderiza lento".
+2. Se agregó una captura de pantalla + HTML de diagnóstico (temporal,
+   subida a Storage) justo en el momento del timeout. Resultado: el
+   formulario de login seguía ahí, lleno, con el botón "Iniciar sesión"
+   con apariencia de recién-clickeado, **sin CAPTCHA, sin ningún error**.
+3. Se agregó un endpoint temporal `/api/bot/diag-network` que hace un
+   GET HTTP crudo (sin Playwright) desde Railway hacia
+   `e-menu.sunat.gob.pe` y `api-seguridad.sunat.gob.pe`. Resultado:
+   **200 OK en <1s para ambos** — conectividad de red perfecta, se
+   descartó por completo cualquier bloqueo de IP/red.
+4. **Causa raíz real:** el login de SUNAT es una app Angular. El código
+   solo esperaba `domcontentloaded` (HTML crudo) antes de llenar el
+   formulario y hacer clic en `#btnAceptar` — no garantiza que Angular ya
+   haya conectado sus manejadores de eventos JS. En local, el tiempo que
+   toma la consulta a Supabase por las credenciales le daba a Angular
+   margen suficiente para terminar de hidratarse antes del clic; en
+   Railway, con menos CPU disponible en el contenedor, ese mismo margen
+   no alcanzaba — el clic de Playwright "aterrizaba" en un botón que
+   visualmente ya estaba ahí pero cuya lógica de envío todavía no estaba
+   conectada, así que no pasaba nada.
+5. **Fix aplicado (commit `83ee545`):** cambiar la espera a
+   `networkidle` y esperar explícitamente a que `#btnAceptar` pierda su
+   estado disabled antes de hacer clic. Se quitaron los diagnósticos
+   temporales (screenshot/HTML y el endpoint `/api/bot/diag-network`) una
+   vez confirmada la causa.
+6. **Verificado end-to-end contra Railway real (no local):** login ✅
+   (14 cookies reales, redirigido al menú), y se corrió la descarga real
+   de los 17 comprobantes de PROSPERY (periodo 202607, COMPRAS,
+   previamente reseteados en la parte 3) **directo en Railway**: 13
+   quedaron `DESCARGADO` completos (xml+pdf), 6 con pdf listo y xml
+   pendiente de un reintento (timeout puntual del evento de descarga en
+   el navegador, no relacionado al login), 0 con rutas de Storage rotas.
+   Se confirmó que `GET /api/bot/comprobante-file/{id}?tipo=xml` ahora
+   sirve el archivo real (200 OK) — el bug exacto que reportó el usuario
+   quedó cerrado.
+7. De paso se reaplicó el fix ya validado del dropdown `tipoComprobante`
+   en `download_xml_scraper.py` (commit `18201b5`, revert del revert de
+   `bfe2d50`) — mismo patrón de causa raíz (Angular/SUNAT renderiza más
+   lento de lo esperado bajo Railway), ya no hace falta decidir si
+   reaplicarlo, ya está aplicado y confirmado funcionando en la corrida
+   de PROSPERY de arriba (se vieron reintentos "[retry-consultar]"
+   funcionando como se diseñó).
+8. **Pendiente:** los 16 comprobantes de PROSPERY marcados `NO_EXISTE`
+   (agotaron 10 reintentos con el bug viejo, proveedor RUC
+   `20100047218`) siguen en ese estado terminal — no se reintentan solos.
+   Si se quiere darles otra oportunidad ahora que el scraper está
+   arreglado, hay que resetearlos manualmente a `PENDIENTE` (no se hizo
+   en esta sesión, no se pidió explícitamente).
+9. **Railway CLI sigue sin autenticar en esta sesión** — el usuario iba a
+   correr `railway login`; no se confirmó que terminara. No fue
+   necesario para este fix (todo se hizo vía git push, que ya
+   autodesplegaba, y vía curl contra la API pública).
+
 ## Sesión 2026-09-19 (parte 3) — Hueco de la migración a Storage (873 registros)
 
 Al probar el botón de descarga por fila con PROSPERY VIAJES (RUC
