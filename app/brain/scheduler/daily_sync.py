@@ -44,7 +44,7 @@ def _current_periodo() -> str:
     return datetime.now().strftime("%Y%m")
 
 
-def _run_step(step_name: str, cmd: list[str], cwd: str, log_lines: list[str]) -> bool:
+def _run_step(step_name: str, cmd: list[str], cwd: str, log_lines: list[str], timeout: int = 600) -> bool:
     """
     Run a subprocess step, capture output, and return True on success.
     """
@@ -61,7 +61,7 @@ def _run_step(step_name: str, cmd: list[str], cwd: str, log_lines: list[str]) ->
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=600,  # 10 minutes max per step
+            timeout=timeout,
             env={**os.environ, "PYTHONUNBUFFERED": "1"},
         )
 
@@ -82,7 +82,7 @@ def _run_step(step_name: str, cmd: list[str], cwd: str, log_lines: list[str]) ->
             return False
 
     except subprocess.TimeoutExpired:
-        log_lines.append(f"{header} ⏰ Timeout (10 min) excedido.")
+        log_lines.append(f"{header} ⏰ Timeout ({timeout}s) excedido.")
         return False
     except Exception as e:
         log_lines.append(f"{header} 💥 Excepción: {e}")
@@ -199,6 +199,7 @@ async def run_daily_sync(
                  "--headless", "--limit", str(config.xml_download_limit),
                  "--ruc", client_ruc, "--periodo", periodo],
                 cwd, client_log,
+                timeout=config.step_timeout_seconds,
             )
             client_result["steps"]["download_xmls"] = "ok" if ok else "error"
 

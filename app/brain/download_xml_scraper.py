@@ -708,14 +708,21 @@ async def _search_individual(
             try:
                 if await frame.locator(sel).count() > 0:
                     # El usuario indicó que hacer click a veces falla si está bloqueado, pero dar Tab (focus) y Enter funciona.
-                    # Simulamos exactamente eso:
+                    # CONFIRMADO MANUALMENTE: un solo Enter deja a SUNAT "cargando" indefinidamente
+                    # con bastante frecuencia; lo que realmente lo destraba es dar Enter varias
+                    # veces seguidas en rápida sucesión (~3 Enters en 1-1.5s), no un solo click
+                    # seguido de esperas largas. Replicamos exactamente esa ráfaga.
                     btn = frame.locator(sel).first
                     await btn.evaluate("node => node.focus()")
                     await page.keyboard.press("Enter")
-                    
+                    await asyncio.sleep(0.5)
+                    await page.keyboard.press("Enter")
+                    await asyncio.sleep(0.5)
+                    await page.keyboard.press("Enter")
+
                     consultar_clicked = True
                     if intento > 1:
-                        print(f"   [retry-consultar] Intento {intento}/{MAX_CONSULTAR_RETRIES}: re-click en Consultar (vía focus+Enter).")
+                        print(f"   [retry-consultar] Intento {intento}/{MAX_CONSULTAR_RETRIES}: re-click en Consultar (ráfaga de 3 Enters).")
                     break
             except Exception:
                 continue
@@ -770,10 +777,90 @@ async def _search_individual(
     except Exception:
         body_text = ""
 
+    # --- Detectar saturación del servidor SUNAT ("Error del Servidor") o carga aún en curso ---
+    # Evidencia real: TODAS las capturas de debug de casos marcados no_descargable hasta ahora
+    # muestran el modal "Error del Servidor... por favor reintentar en 5 minutos" con el spinner
+    # ngx-spinner ("Cargando...") todavía visible. El bot agotaba sus 4 reintentos cortos (~3s
+    # cada uno), asumía found=True porque ese texto no coincide con not_found_texts, y al no
+    # encontrar botones (la página nunca terminó de cargar) lo marcaba NO_DESCARGABLE — un
+    # estado TERMINAL que sire_bot_orchestrator.py nunca vuelve a reintentar. El comprobante sí
+    # existe y sí es descargable; SUNAT solo estaba saturado por el volumen de consultas.
+    server_busy_texts = [
+        "error del servidor",
+        "no se puede acceder a los servicios de sunat",
+        "por favor reintentar en 5 minutos",
+    ]
+    async def _still_server_busy() -> bool:
+        try:
+            txt = await frame.evaluate("document.body.innerText")
+        except Exception:
+            txt = ""
+        if any(t in txt.lower() for t in server_busy_texts):
+            return True
+        try:
+            return await frame.locator("ngx-spinner, .loading-text").first.is_visible(timeout=300)
+        except Exception:
+            return False
+
+    is_server_busy = await _still_server_busy()
+
+    if is_server_busy:
+        # CONFIRMADO MANUALMENTE: cuando queda "atascado" así, no basta con esperar — hay que
+        # forzarlo con Enters seguidos. Antes de rendirnos (server_busy -> reintenta mañana),
+        # probamos exactamente esa técnica una vez más aquí, ya con el modal de error cerrado.
+        print(f"   [server-busy] SUNAT saturado o carga incompleta tras los reintentos. Forzando con ráfaga extra de Enters: {base_name}")
+        try:
+            for ctx in [page, frame]:
+                accept_btn = ctx.locator("button:has-text('Aceptar'), .swal2-confirm")
+                if await accept_btn.count() > 0 and await accept_btn.first.is_visible():
+                    await accept_btn.first.click(timeout=1000)
+                    await asyncio.sleep(0.3)
+        except Exception:
+            pass
+
+        # Re-enfocar el botón Consultar antes de la ráfaga: el foco se pudo perder al
+        # cerrar el modal de "Aceptar", y Enter sin foco en el botón no dispara nada.
+        try:
+            for sel in _CONSULTAR_SELS:
+                if await frame.locator(sel).count() > 0:
+                    await frame.locator(sel).first.evaluate("node => node.focus()")
+                    break
+        except Exception:
+            pass
+
+        for _ in range(3):
+            try:
+                await page.keyboard.press("Enter")
+            except Exception:
+                pass
+            await asyncio.sleep(0.5)
+        await asyncio.sleep(1.5)
+
+        is_server_busy = await _still_server_busy()
+
+    if is_server_busy:
+        print(f"   [server-busy] La ráfaga de Enters no logró destrabarlo: {base_name}")
+        if debug_dir:
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                await page.screenshot(path=str(debug_dir / f"server_busy-{base_name}.png"))
+                html = await frame.content()
+                (debug_dir / f"server_busy-{base_name}.html").write_text(html, encoding="utf-8")
+            except Exception:
+                pass
+        # Cerrar cualquier modal de error residual antes de continuar con el siguiente comprobante
+        try:
+            accept_btn = frame.locator("button:has-text('Aceptar'), .swal2-confirm")
+            if await accept_btn.count() > 0:
+                await accept_btn.first.click(timeout=1000)
+        except Exception:
+            pass
+        return "server_busy"
+
     # The result panel varies heavily between Angular and legacy apps.
     # Assume found unless we see explicit "no results" text
     found = True
-    
+
     not_found_texts = [
         "No se encontraron registros",
         "0 de un total de 0",
@@ -1260,6 +1347,18 @@ async def run_batch(
                         tmp_downloads_dir=tmp_downloads_dir,
                     )
 
+                    # --- SUNAT saturado: NUNCA marcar terminal, reintentar en una corrida futura ---
+                    if saved == "server_busy":
+                        results.append(_result_dict(
+                            q, "error",
+                            error="SUNAT saturado (Error del Servidor) - se reintentará en la próxima corrida",
+                        ))
+                        print(f"   [server-busy] Comprobante queda PENDIENTE para reintento: {base_name}")
+                        await _clear_form(frame, page=page)
+                        # Pausa para darle un respiro a SUNAT antes de la siguiente consulta
+                        await asyncio.sleep(8)
+                        continue
+
                     # --- Detectar "no_descargable" para no gastar fallbacks inutilmente ---
                     if saved == "no_descargable":
                         # Detectar si estamos en formulario Hibrido (sin dropdown de tipo)
@@ -1284,6 +1383,7 @@ async def run_batch(
                         
                         # Probar fallbacks
                         found_via_fallback = False
+                        server_busy_hit = False
                         for alt_tipo in fallback_tipos:
                             print(f"   [fallback] Tipo '{q.tipo}' no descargable. Reintentando con tipo '{alt_tipo}'...")
                             await _clear_form(frame, page=page)
@@ -1300,20 +1400,30 @@ async def run_batch(
                                 tmp_downloads_dir=tmp_downloads_dir,
                                 is_fallback=True,
                             )
+                            if saved == "server_busy":
+                                server_busy_hit = True
+                                break  # SUNAT saturado: no seguir probando mas tipos alternativos
                             if saved and saved != "no_descargable":
                                 found_via_fallback = True
                                 print(f"   [fallback] Encontrado con tipo alternativo '{alt_tipo}': {alt_base_name}")
                                 break
                             if saved == "no_descargable":
                                 continue  # Probar siguiente tipo alternativo
-                        
+
                         if found_via_fallback:
                             results.append(_result_dict(q, "ok", paths=[str(p) for p in saved]))
                             print(f"Saved: {saved}")
+                        elif server_busy_hit:
+                            results.append(_result_dict(
+                                q, "error",
+                                error="SUNAT saturado (Error del Servidor) durante fallback - se reintentara",
+                            ))
+                            print(f"   [server-busy] Comprobante queda PENDIENTE para reintento: {base_name}")
+                            await asyncio.sleep(8)
                         else:
                             results.append(_result_dict(q, "no_descargable"))
                             print(f"Comprobante encontrado pero sin descarga (todos los tipos agotados): {base_name}")
-                        
+
                         await _clear_form(frame, page=page)
                         continue
 
@@ -1336,11 +1446,20 @@ async def run_batch(
                                 tmp_downloads_dir=tmp_downloads_dir,
                                 is_fallback=True,
                             )
+                            if saved == "server_busy":
+                                break  # SUNAT saturado: no seguir probando mas tipos alternativos
                             if saved and saved != "no_descargable":
                                 print(f"   [fallback] Encontrado con tipo alternativo '{alt_tipo}': {alt_base_name}")
                                 break
 
-                    if saved and saved != "no_descargable":
+                    if saved == "server_busy":
+                        results.append(_result_dict(
+                            q, "error",
+                            error="SUNAT saturado (Error del Servidor) durante fallback - se reintentara",
+                        ))
+                        print(f"   [server-busy] Comprobante queda PENDIENTE para reintento: {base_name}")
+                        await asyncio.sleep(8)
+                    elif saved and saved != "no_descargable":
                         # Bug 4: pasar lista de paths guardados
                         results.append(_result_dict(q, "ok", paths=[str(p) for p in saved]))
                         print(f"Saved: {saved}")

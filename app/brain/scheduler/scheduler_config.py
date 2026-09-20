@@ -31,8 +31,17 @@ class SchedulerConfig:
     step_classify_ai: bool = True
 
     # ── Limits ──────────────────────────────────────────────────
-    # Max XMLs to download per client per run.
-    xml_download_limit: int = int(os.getenv("SCHEDULER_XML_LIMIT", "200"))
+    # Max XMLs to download per client per run. Kept low on purpose: at ~200
+    # items a single client's step routinely blew past the 10-minute step
+    # timeout (see step_timeout_seconds below), got killed mid-run, and left
+    # every one of its 200 comprobantes stuck at reintentos=1 with nothing
+    # downloaded. A lower per-run cap means every client makes some progress
+    # every day instead of one big client starving everyone else.
+    xml_download_limit: int = int(os.getenv("SCHEDULER_XML_LIMIT", "50"))
+    # Max seconds subprocess.run() waits for the "2-DESCARGA-XMLs" step
+    # before killing it. Must comfortably cover xml_download_limit queries
+    # (each SUNAT search can take several seconds, more under load).
+    step_timeout_seconds: int = int(os.getenv("SCHEDULER_STEP_TIMEOUT", "1200"))
     # Max comprobantes for PDF generation per client per run.
     pdf_generation_limit: int = int(os.getenv("SCHEDULER_PDF_LIMIT", "500"))
     # Max comprobantes for enrichment per client per run.
