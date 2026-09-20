@@ -124,10 +124,17 @@ def parse_and_insert_sire_txt(client_id: str, periodo: str, book_type: str, txt_
     for i in range(0, len(fisicos_records), batch_size):
         batch = fisicos_records[i:i+batch_size]
         try:
-            # Usamos índices únicos para evitar duplicados en cola
+            # BUGFIX: ignore_duplicates=True para que sea ON CONFLICT DO NOTHING.
+            # Sin esto, cada vez que se re-descarga el preliminar SIRE (cron diario,
+            # o cualquier trigger manual) este upsert pisaba estado_xml/estado_pdf/
+            # reintentos de TODO comprobante ya existente de vuelta a PENDIENTE/0,
+            # borrando el progreso de descargas ya hechas en corridas anteriores.
+            # Con DO NOTHING, un registro existente queda intacto y solo se insertan
+            # los comprobantes realmente nuevos.
             supabase.table("sire_comprobantes_fisicos").upsert(
-                batch, 
-                on_conflict="cliente_id, periodo, tipo_libro, ruc_tercero, tipo_cp, serie, numero"
+                batch,
+                on_conflict="cliente_id, periodo, tipo_libro, ruc_tercero, tipo_cp, serie, numero",
+                ignore_duplicates=True,
             ).execute()
         except Exception as e:
             print(f"Error en bulk insert de comprobantes físicos: {e}")
