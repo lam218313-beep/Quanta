@@ -50,8 +50,15 @@ class SchedulerConfig:
     classification_limit: int = int(os.getenv("SCHEDULER_CLASSIFY_LIMIT", "100"))
 
     # ── Throttling ──────────────────────────────────────────────
-    # Seconds to wait between processing different clients.
+    # Seconds to wait between processing different clients when concurrency=1.
     delay_between_clients: int = int(os.getenv("SCHEDULER_CLIENT_DELAY", "15"))
+    # How many clients' full pipelines run at the same time. 1 = sequential
+    # (original behaviour, safest default for the unattended nightly cron).
+    # Raise this for on-demand backfill runs where waiting hours for 35
+    # clients one-by-one isn't acceptable — each client gets its own
+    # subprocess/browser, so this is real OS-level parallelism, not just
+    # asyncio concurrency.
+    concurrency: int = int(os.getenv("SCHEDULER_CONCURRENCY", "1"))
 
     # ── Mode ────────────────────────────────────────────────────
     # "all" → process every client with credentials.

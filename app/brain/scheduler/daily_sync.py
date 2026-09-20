@@ -9,6 +9,11 @@ Automated daily pipeline that, for every active client:
   5. Enriches comprobantes with descriptions extracted from XMLs
   6. Runs AI classification to assign accounting codes
 
+Clients are processed with bounded concurrency (default 1, i.e. sequential —
+same as before). Each client's full 5-step pipeline runs in its own worker
+thread so multiple clients' subprocesses/Playwright sessions can be in
+flight at once without one client's SUNAT wait blocking every other client.
+
 This script can run standalone or be called by APScheduler inside FastAPI.
 
 Usage:
@@ -20,6 +25,9 @@ Usage:
 
     # Run for a specific period (default: current month):
     python app/brain/scheduler/daily_sync.py --periodo 202609
+
+    # Run up to 5 clients in parallel:
+    python app/brain/scheduler/daily_sync.py --periodo 202608 --concurrency 5
 """
 
 from __future__ import annotations
@@ -89,29 +97,137 @@ def _run_step(step_name: str, cmd: list[str], cwd: str, log_lines: list[str], ti
         return False
 
 
-async def _run_async_step(step_name: str, coro, log_lines: list[str]) -> bool:
-    """
-    Run an async step (like PDF generation), capture output, return True on success.
-    """
-    header = f"[{step_name}]"
-    log_lines.append(f"\n{'─' * 50}")
-    log_lines.append(f"{header} Iniciando...")
-
+def _count_descargados(supabase, cliente_id: str, periodo: str) -> Optional[int]:
+    """Cuenta XMLs en estado DESCARGADO para un cliente+periodo. None si la query falla."""
     try:
-        result = await coro
-        generated = result.get("generated", 0)
-        errors = result.get("errors", 0)
-        log_lines.append(f"{header} Generados: {generated}, Errores: {errors}")
-        log_lines.append(f"{header} ✅ Completado.")
-        return True
-    except Exception as e:
-        log_lines.append(f"{header} 💥 Excepción: {e}")
-        return False
+        res = (
+            supabase.table("sire_comprobantes_fisicos")
+            .select("id", count="exact")
+            .eq("cliente_id", cliente_id)
+            .eq("periodo", periodo)
+            .eq("estado_xml", "DESCARGADO")
+            .execute()
+        )
+        return res.count or 0
+    except Exception:
+        return None
+
+
+def _process_client_sync(
+    cliente: dict,
+    periodo: str,
+    config,
+    cwd: str,
+    python: str,
+    index: int,
+    total: int,
+) -> tuple[str, dict, list[str]]:
+    """
+    Runs all 5 pipeline steps for a single client, synchronously, measuring
+    the duration of every step. Designed to run inside a worker thread
+    (via asyncio.to_thread) so several clients can be processed at once.
+    """
+    from app.brain.db.supabase_client import get_supabase
+
+    client_ruc = cliente["ruc"]
+    client_name = cliente["razon_social"]
+    client_log: list[str] = [
+        f"\n{'═' * 60}",
+        f"  [{index}/{total}] {client_name} ({client_ruc})",
+        f"{'═' * 60}",
+    ]
+    client_result: dict = {"razon_social": client_name, "steps": {}}
+    client_start = time.monotonic()
+    supabase = get_supabase()
+
+    def _record(step_key: str, step_label: str, ok: bool, t0: float, extra: str = "") -> None:
+        dur = round(time.monotonic() - t0, 1)
+        client_result["steps"][step_key] = {"status": "ok" if ok else "error", "duration_seconds": dur}
+        client_log.append(f"[timing] {step_label}: {dur}s{extra}")
+
+    # Step 1: Download SIRE Preliminar (TXT via API)
+    if config.step_download_preliminar:
+        t0 = time.monotonic()
+        ok = _run_step(
+            "1-DESCARGA-PRELIMINAR",
+            [python, "app/brain/sire_download_cli.py", "--client", client_ruc, "--period", periodo],
+            cwd, client_log,
+        )
+        _record("download_preliminar", "1-DESCARGA-PRELIMINAR", ok, t0)
+
+    # Step 2: Download XMLs (via SIRE bot orchestrator) — measure real throughput
+    # via a before/after DB count, not just pass/fail.
+    if config.step_download_xmls:
+        before = _count_descargados(supabase, cliente["id"], periodo)
+        t0 = time.monotonic()
+        ok = _run_step(
+            "2-DESCARGA-XMLs",
+            [python, "app/brain/db/sire_bot_orchestrator.py",
+             "--headless", "--limit", str(config.xml_download_limit),
+             "--ruc", client_ruc, "--periodo", periodo],
+            cwd, client_log,
+            timeout=config.step_timeout_seconds,
+        )
+        after = _count_descargados(supabase, cliente["id"], periodo)
+        delta = (after - before) if (before is not None and after is not None) else None
+        client_result["xml_downloaded_delta"] = delta
+        _record(
+            "download_xmls", "2-DESCARGA-XMLs", ok, t0,
+            extra=f" (XML descargados: +{delta})" if delta is not None else "",
+        )
+
+    # Step 3: Generate PDFs from XMLs. Own asyncio loop — this runs inside a
+    # worker thread with no loop of its own, so asyncio.run() here is safe
+    # and does not interfere with the caller's event loop.
+    if config.step_generate_pdfs:
+        from app.brain.services.pdf_from_xml_service import generate_pdfs_from_xmls
+        t0 = time.monotonic()
+        try:
+            result = asyncio.run(
+                generate_pdfs_from_xmls(ruc=client_ruc, periodo=periodo, limit=config.pdf_generation_limit)
+            )
+            client_log.append(
+                f"[3-GENERAR-PDFs] Generados: {result.get('generated', 0)}, Errores: {result.get('errors', 0)}"
+            )
+            ok = True
+        except Exception as e:
+            client_log.append(f"[3-GENERAR-PDFs] 💥 Excepción: {e}")
+            ok = False
+        _record("generate_pdfs", "3-GENERAR-PDFs", ok, t0)
+
+    # Step 4: Enrich XMLs (extract descriptions from XML files)
+    if config.step_enrich_xml:
+        t0 = time.monotonic()
+        ok = _run_step(
+            "4-ENRIQUECIMIENTO-XML",
+            [python, "app/brain/db/sire_xml_enricher.py",
+             "--limit", str(config.enrichment_limit), "--ruc", client_ruc, "--periodo", periodo],
+            cwd, client_log,
+        )
+        _record("enrich_xml", "4-ENRIQUECIMIENTO-XML", ok, t0)
+
+    # Step 5: AI Classification
+    if config.step_classify_ai:
+        t0 = time.monotonic()
+        ok = _run_step(
+            "5-CLASIFICACION-IA",
+            [python, "app/brain/db/ai_classifier.py",
+             "--limit", str(config.classification_limit), "--ruc", client_ruc, "--periodo", periodo],
+            cwd, client_log,
+        )
+        _record("classify_ai", "5-CLASIFICACION-IA", ok, t0)
+
+    total_dur = round(time.monotonic() - client_start, 1)
+    client_result["duration_seconds"] = total_dur
+    client_log.append(f"[timing] TOTAL cliente {client_ruc}: {total_dur}s ({total_dur / 60:.1f} min)")
+
+    return client_ruc, client_result, client_log
 
 
 async def run_daily_sync(
     ruc: str | None = None,
     periodo: str | None = None,
+    concurrency: int | None = None,
 ) -> dict:
     """
     Execute the full daily sync pipeline for one or all clients.
@@ -120,9 +236,11 @@ async def run_daily_sync(
         ruc: If provided, only sync this client. Otherwise sync all clients
              with configured API credentials.
         periodo: Period to sync (YYYYMM). Defaults to current month.
+        concurrency: Max number of clients processed at the same time.
+             Defaults to config.concurrency (1 = sequential, same as before).
 
     Returns:
-        Summary dict with per-client results.
+        Summary dict with per-client results and timing.
     """
     from app.brain.db.supabase_client import get_supabase
     from app.brain.scheduler.scheduler_config import get_scheduler_config
@@ -132,6 +250,11 @@ async def run_daily_sync(
     periodo = periodo or _current_periodo()
     cwd = str(_root)
     python = sys.executable
+    concurrency = max(1, concurrency or config.concurrency)
+    # Stagger initial logins within a concurrent wave so N clients don't all
+    # hit SUNAT in the same instant. Sequential mode keeps the original
+    # inter-client throttle unchanged.
+    stagger_seconds = config.delay_between_clients if concurrency == 1 else 3
 
     # ── Determine which clients to process ───────────────────────
     if ruc:
@@ -160,98 +283,49 @@ async def run_daily_sync(
     master_log: list[str] = [
         "=" * 60,
         f"  SINCRONIZACIÓN DIARIA QUANTA",
-        f"  Fecha: {timestamp}  |  Periodo: {periodo}",
+        f"  Fecha: {timestamp}  |  Periodo: {periodo}  |  Concurrencia: {concurrency}",
         f"  Clientes a procesar: {len(clientes)}",
         "=" * 60,
     ]
 
+    run_start = time.monotonic()
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _run_one(cliente: dict, idx: int):
+        stagger = ((idx - 1) % concurrency) * stagger_seconds
+        if stagger:
+            await asyncio.sleep(stagger)
+        async with semaphore:
+            return await asyncio.to_thread(
+                _process_client_sync, cliente, periodo, config, cwd, python, idx, len(clientes)
+            )
+
+    tasks = [_run_one(c, i) for i, c in enumerate(clientes, 1)]
+    completed = await asyncio.gather(*tasks, return_exceptions=True)
+
     results_by_client: dict[str, dict] = {}
-
-    for i, cliente in enumerate(clientes, 1):
-        client_ruc = cliente["ruc"]
-        client_name = cliente["razon_social"]
-        client_log: list[str] = []
-
-        master_log.append(f"\n{'═' * 60}")
-        master_log.append(f"  [{i}/{len(clientes)}] {client_name} ({client_ruc})")
-        master_log.append(f"{'═' * 60}")
-
-        client_result = {
-            "razon_social": client_name,
-            "steps": {},
-        }
-
-        # Step 1: Download SIRE Preliminar (TXT via API)
-        if config.step_download_preliminar:
-            ok = _run_step(
-                "1-DESCARGA-PRELIMINAR",
-                [python, "app/brain/sire_download_cli.py",
-                 "--client", client_ruc, "--period", periodo],
-                cwd, client_log,
-            )
-            client_result["steps"]["download_preliminar"] = "ok" if ok else "error"
-
-        # Step 2: Download XMLs (via SIRE bot orchestrator)
-        if config.step_download_xmls:
-            ok = _run_step(
-                "2-DESCARGA-XMLs",
-                [python, "app/brain/db/sire_bot_orchestrator.py",
-                 "--headless", "--limit", str(config.xml_download_limit),
-                 "--ruc", client_ruc, "--periodo", periodo],
-                cwd, client_log,
-                timeout=config.step_timeout_seconds,
-            )
-            client_result["steps"]["download_xmls"] = "ok" if ok else "error"
-
-        # Step 3: Generate PDFs from XMLs
-        if config.step_generate_pdfs:
-            from app.brain.services.pdf_from_xml_service import generate_pdfs_from_xmls
-            ok = await _run_async_step(
-                "3-GENERAR-PDFs",
-                generate_pdfs_from_xmls(
-                    ruc=client_ruc, periodo=periodo,
-                    limit=config.pdf_generation_limit,
-                ),
-                client_log,
-            )
-            client_result["steps"]["generate_pdfs"] = "ok" if ok else "error"
-
-        # Step 4: Enrich XMLs (extract descriptions from XML files)
-        if config.step_enrich_xml:
-            ok = _run_step(
-                "4-ENRIQUECIMIENTO-XML",
-                [python, "app/brain/db/sire_xml_enricher.py",
-                 "--limit", str(config.enrichment_limit),
-                 "--ruc", client_ruc, "--periodo", periodo],
-                cwd, client_log,
-            )
-            client_result["steps"]["enrich_xml"] = "ok" if ok else "error"
-
-        # Step 5: AI Classification
-        if config.step_classify_ai:
-            ok = _run_step(
-                "5-CLASIFICACION-IA",
-                [python, "app/brain/db/ai_classifier.py",
-                 "--limit", str(config.classification_limit),
-                 "--ruc", client_ruc, "--periodo", periodo],
-                cwd, client_log,
-            )
-            client_result["steps"]["classify_ai"] = "ok" if ok else "error"
-
+    total_xml_delta = 0
+    for res in completed:
+        if isinstance(res, Exception):
+            master_log.append(f"\n[ERROR] Excepción no controlada procesando un cliente: {res}")
+            continue
+        client_ruc, client_result, client_log = res
         results_by_client[client_ruc] = client_result
         master_log.extend(client_log)
+        delta = client_result.get("xml_downloaded_delta")
+        if delta:
+            total_xml_delta += delta
 
-        # Throttle between clients to avoid SUNAT rate limiting
-        if i < len(clientes):
-            master_log.append(
-                f"\nEsperando {config.delay_between_clients}s antes del siguiente cliente..."
-            )
-            await asyncio.sleep(config.delay_between_clients)
+    run_duration = round(time.monotonic() - run_start, 1)
 
     # ── Save summary log ─────────────────────────────────────────
     master_log.append(f"\n{'=' * 60}")
     master_log.append(f"  FIN SINCRONIZACIÓN DIARIA")
-    master_log.append(f"  Clientes procesados: {len(results_by_client)}")
+    master_log.append(f"  Clientes procesados: {len(results_by_client)}  |  Concurrencia: {concurrency}")
+    master_log.append(f"  Duración total: {run_duration}s ({run_duration / 60:.1f} min)")
+    master_log.append(f"  XML descargados en esta corrida: {total_xml_delta}")
+    if run_duration > 0 and total_xml_delta:
+        master_log.append(f"  Throughput: {total_xml_delta / (run_duration / 60):.2f} XML/min")
     master_log.append(f"{'=' * 60}")
 
     log_dir = _root / "app" / "logs"
@@ -266,7 +340,10 @@ async def run_daily_sync(
 
     return {
         "periodo": periodo,
+        "concurrency": concurrency,
         "clientes_procesados": len(results_by_client),
+        "duracion_segundos": run_duration,
+        "xml_descargados": total_xml_delta,
         "resultados": results_by_client,
         "log_file": str(log_path),
     }
@@ -279,6 +356,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sincronización diaria Quanta")
     parser.add_argument("--ruc", type=str, help="RUC del cliente (opcional, default: todos)")
     parser.add_argument("--periodo", type=str, help="Periodo YYYYMM (opcional, default: mes actual)")
+    parser.add_argument("--concurrency", type=int, help="Clientes en paralelo (opcional, default: 1)")
     args = parser.parse_args()
 
-    asyncio.run(run_daily_sync(ruc=args.ruc, periodo=args.periodo))
+    asyncio.run(run_daily_sync(ruc=args.ruc, periodo=args.periodo, concurrency=args.concurrency))

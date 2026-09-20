@@ -165,8 +165,9 @@ def reset_running_tasks(task_id: str = None):
 
 
 class DailySyncRequest(BaseModel):
-    periodo: str | None = None  # YYYYMM, defaults to the current month
-    ruc: str | None = None      # single client, or None for every client with credentials
+    periodo: str | None = None      # YYYYMM, defaults to the current month
+    ruc: str | None = None          # single client, or None for every client with credentials
+    concurrency: int | None = None  # clients processed in parallel; default 1 (sequential)
 
 
 @router.post("/run-daily-sync")
@@ -175,9 +176,10 @@ async def trigger_daily_sync(req: DailySyncRequest, background_tasks: Background
     Manually launches the exact same pipeline the 3am cron runs
     (app/brain/scheduler/daily_sync.py: preliminar SIRE -> descarga XML ->
     genera PDFs -> enriquecimiento -> clasificacion IA), for a period/cliente
-    elegido a demanda en vez de esperar al cron. Con ~35 clientes activos y
-    sin filtro de RUC esto corre secuencial y puede tomar varias horas -
-    revisa el progreso con /api/bot/logs/{task_id}.
+    elegido a demanda en vez de esperar al cron. `concurrency` corre varios
+    clientes en paralelo (cada uno con su propio subproceso/browser) en vez
+    de uno a la vez - util para correr un backfill sin esperar horas.
+    Revisa el progreso con /api/bot/logs/{task_id}.
     """
     periodo = req.periodo or datetime.now().strftime("%Y%m")
     task_id = f"daily_sync_{req.ruc or 'all'}_{periodo}"
@@ -187,12 +189,14 @@ async def trigger_daily_sync(req: DailySyncRequest, background_tasks: Background
     cmd = [sys.executable, "app/brain/scheduler/daily_sync.py", "--periodo", periodo]
     if req.ruc:
         cmd += ["--ruc", req.ruc]
+    if req.concurrency:
+        cmd += ["--concurrency", str(req.concurrency)]
 
     running_tasks[task_id] = True
     background_tasks.add_task(run_command_in_background, task_id, cmd, str(ROOT_DIR))
     return {
         "status": "started",
-        "message": f"Pipeline completo iniciado para {req.ruc or 'todos los clientes'} - periodo {periodo}.",
+        "message": f"Pipeline completo iniciado para {req.ruc or 'todos los clientes'} - periodo {periodo} - concurrencia {req.concurrency or 1}.",
         "task_id": task_id,
     }
 
