@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import threading
 import traceback
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Form, Response
@@ -161,6 +162,39 @@ def reset_running_tasks(task_id: str = None):
                 killed.append(tid)
 
     return {"cleared": killed, "message": f"Cleared {len(killed)} stuck task(s). You can now restart the bot."}
+
+
+class DailySyncRequest(BaseModel):
+    periodo: str | None = None  # YYYYMM, defaults to the current month
+    ruc: str | None = None      # single client, or None for every client with credentials
+
+
+@router.post("/run-daily-sync")
+async def trigger_daily_sync(req: DailySyncRequest, background_tasks: BackgroundTasks):
+    """
+    Manually launches the exact same pipeline the 3am cron runs
+    (app/brain/scheduler/daily_sync.py: preliminar SIRE -> descarga XML ->
+    genera PDFs -> enriquecimiento -> clasificacion IA), for a period/cliente
+    elegido a demanda en vez de esperar al cron. Con ~35 clientes activos y
+    sin filtro de RUC esto corre secuencial y puede tomar varias horas -
+    revisa el progreso con /api/bot/logs/{task_id}.
+    """
+    periodo = req.periodo or datetime.now().strftime("%Y%m")
+    task_id = f"daily_sync_{req.ruc or 'all'}_{periodo}"
+    if task_id in running_tasks:
+        return {"status": "already_running", "message": "Ya hay una corrida del pipeline en curso para este periodo/cliente.", "task_id": task_id}
+
+    cmd = [sys.executable, "app/brain/scheduler/daily_sync.py", "--periodo", periodo]
+    if req.ruc:
+        cmd += ["--ruc", req.ruc]
+
+    running_tasks[task_id] = True
+    background_tasks.add_task(run_command_in_background, task_id, cmd, str(ROOT_DIR))
+    return {
+        "status": "started",
+        "message": f"Pipeline completo iniciado para {req.ruc or 'todos los clientes'} - periodo {periodo}.",
+        "task_id": task_id,
+    }
 
 
 @router.post("/download-api")
