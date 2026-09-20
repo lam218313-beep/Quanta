@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime
 from typing import Optional
+import fitz  # PyMuPDF
 
 from app.brain.pdf_generator import generate_invoice_pdf_from_xml, generate_client_report_pdf, generate_financial_report_pdf
 from app.brain.db.supabase_client import get_supabase
@@ -184,6 +185,53 @@ async def generate_report_pdf(req: ReportRequest):
 
     try:
         await generate_financial_report_pdf(report_data, output_path)
-        return FileResponse(path=output_path, filename=f"Informe_{req.periodo}.pdf", media_type="application/pdf")
     except Exception as e:
         raise HTTPException(500, f"Error generando el informe: {str(e)}")
+
+    _merge_attachments(supabase, output_path, req.cliente_id, req.periodo)
+
+    return FileResponse(path=output_path, filename=f"Informe_{req.periodo}.pdf", media_type="application/pdf")
+
+
+def _merge_attachments(supabase, report_path: str, cliente_id: str, periodo: str) -> None:
+    """
+    Appends every client_attachments PDF for this cliente+periodo onto the
+    end of the report at report_path, in upload order. Never raises — a
+    bad attachment is skipped and logged, the base report is always served.
+    """
+    STORAGE_BUCKET = "client-attachments"
+
+    try:
+        res = (
+            supabase.table("client_attachments")
+            .select("storage_path")
+            .eq("cliente_id", cliente_id)
+            .eq("periodo", periodo)
+            .order("created_at")
+            .execute()
+        )
+        attachments = res.data or []
+    except Exception as e:
+        print(f"[attachments] No se pudo consultar client_attachments: {e}")
+        return
+
+    if not attachments:
+        return
+
+    report_doc = fitz.open(report_path)
+    merged_any = False
+
+    for att in attachments:
+        try:
+            content = supabase.storage.from_(STORAGE_BUCKET).download(att["storage_path"])
+            attachment_doc = fitz.open(stream=content, filetype="pdf")
+            report_doc.insert_pdf(attachment_doc)
+            attachment_doc.close()
+            merged_any = True
+        except Exception as e:
+            print(f"[attachments] No se pudo fusionar {att['storage_path']}: {e}")
+            continue
+
+    if merged_any:
+        report_doc.saveIncr() if report_doc.can_save_incrementally() else report_doc.save(report_path, incremental=False)
+    report_doc.close()
