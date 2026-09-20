@@ -42,12 +42,22 @@ class SchedulerConfig:
     # before killing it. Must comfortably cover xml_download_limit queries
     # (each SUNAT search can take several seconds, more under load).
     step_timeout_seconds: int = int(os.getenv("SCHEDULER_STEP_TIMEOUT", "1200"))
-    # Max comprobantes for PDF generation per client per run.
-    pdf_generation_limit: int = int(os.getenv("SCHEDULER_PDF_LIMIT", "500"))
-    # Max comprobantes for enrichment per client per run.
-    enrichment_limit: int = int(os.getenv("SCHEDULER_ENRICH_LIMIT", "500"))
-    # Max comprobantes for AI classification per client per run.
-    classification_limit: int = int(os.getenv("SCHEDULER_CLASSIFY_LIMIT", "100"))
+    # Max comprobantes for PDF generation PER RUN, across ALL clients combined
+    # (this step now runs once globally, not once per client - see daily_sync.py
+    # Fase 2). Raised well above the old per-client value of 500 since one call
+    # now has to cover everyone's backlog instead of a single client's; it's
+    # cheap local rendering with no SUNAT interaction, so a high cap is safe.
+    pdf_generation_limit: int = int(os.getenv("SCHEDULER_PDF_LIMIT", "3000"))
+    # Max comprobantes for enrichment PER RUN, across ALL clients combined
+    # (also a global step now - Fase 3). Cheap DB/regex work, same reasoning
+    # as pdf_generation_limit above.
+    enrichment_limit: int = int(os.getenv("SCHEDULER_ENRICH_LIMIT", "3000"))
+    # Max comprobantes for AI classification PER RUN, across ALL clients
+    # combined (global step - Fase 4). Deliberately NOT raised as aggressively
+    # as the two limits above: each item costs a real OpenAI API call, so this
+    # caps spend per run rather than just being a safety limit. Raise via
+    # SCHEDULER_CLASSIFY_LIMIT if 500/run across all clients isn't enough.
+    classification_limit: int = int(os.getenv("SCHEDULER_CLASSIFY_LIMIT", "500"))
 
     # ── Throttling ──────────────────────────────────────────────
     # Seconds to wait between processing different clients when concurrency=1.
