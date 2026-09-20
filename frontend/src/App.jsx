@@ -714,7 +714,7 @@ function App() {
           ) : activeMainTab === 'clientes' && (userRole === 'admin' || userRole === 'accountant') ? (
             <ClientesView setActiveMainTab={setActiveMainTab} />
           ) : activeMainTab === 'dashboard' ? (
-            <DashboardView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
+            <DashboardView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : (
             <div className="dashboard-placeholder" style={{flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.15)', minHeight: '400px'}}></div>
           )}

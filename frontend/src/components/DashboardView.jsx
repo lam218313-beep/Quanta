@@ -8,6 +8,7 @@ import {
   Loader2, AlertCircle, CheckCircle2, XCircle, Users, Scale, ShoppingBag, Building2, Download
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import AttachmentsDropzone from './AttachmentsDropzone';
 import './DashboardView.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://quanta-production-07d7.up.railway.app';
@@ -38,7 +39,7 @@ const ESTADO_LABELS = {
   COMPLETO: 'Completo',
 };
 
-export default function DashboardView({ currentClient, selectedPeriodo }) {
+export default function DashboardView({ currentClient, selectedPeriodo, userRole }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -523,6 +524,15 @@ export default function DashboardView({ currentClient, selectedPeriodo }) {
         </div>
 
       </div>
+
+      {(userRole === 'admin' || userRole === 'accountant') && (
+        <AttachmentsDropzone
+          clienteId={currentClient.id}
+          periodo={selectedPeriodo}
+          apiBaseUrl={API_BASE_URL}
+        />
+      )}
+
     </div>
   );
 }
