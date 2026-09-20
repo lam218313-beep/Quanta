@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import io
 import os
 import sys
 import zipfile
@@ -41,6 +42,9 @@ if str(_root) not in sys.path:
 
 from app.brain.db.supabase_client import get_supabase
 from app.brain.pdf_generator import parse_sunat_xml, env as jinja_env
+
+STORAGE_BUCKET = "comprobantes-fisicos"
+_TMP_PDF_DIR = Path(__file__).resolve().parents[1] / "downloads" / "tmp_pdf" / "generated"
 
 
 async def _batch_html_to_pdf(
@@ -89,19 +93,83 @@ async def _batch_html_to_pdf(
     return results
 
 
-def _read_xml_bytes(xml_path: Path) -> Optional[bytes]:
-    """Read XML bytes from a file or from inside a ZIP archive."""
-    try:
-        if zipfile.is_zipfile(xml_path):
-            with zipfile.ZipFile(xml_path, "r") as z:
-                for name in z.namelist():
-                    if name.lower().endswith(".xml"):
-                        return z.read(name)
+def _looks_like_xml(raw: bytes) -> bool:
+    """
+    Cheap sanity check before handing bytes to the XML parser. A handful of
+    comprobantes uploaded under a concurrent daily_sync run (fixed in the
+    same change as this check - see the tmp_downloads_dir PID fix in
+    download_xml_scraper.py) ended up with a PDF's bytes stored under the
+    path recorded as ruta_xml. Parsing those as XML doesn't raise cleanly -
+    lxml's recover=True mode returns a near-empty tree and the code crashes
+    later on a None.find() - so catch it here instead, where the message is
+    actually useful.
+    """
+    head = raw.lstrip()[:16]
+    return head.startswith(b"<?xml") or head.startswith(b"<")
+
+
+def _extract_xml_from_zip_bytes(raw: bytes) -> Optional[bytes]:
+    """If raw is a ZIP, return the first .xml member's bytes; otherwise return raw as-is."""
+    buf = io.BytesIO(raw)
+    if zipfile.is_zipfile(buf):
+        buf.seek(0)
+        with zipfile.ZipFile(buf, "r") as z:
+            for name in z.namelist():
+                if name.lower().endswith(".xml"):
+                    return z.read(name)
+        return None
+    if not _looks_like_xml(raw):
+        print(f"  [ERROR] El contenido no es XML (primeros bytes: {raw[:12]!r}) - dato corrupto, se omite")
+        return None
+    return raw
+
+
+def _load_xml_bytes(supabase, ruta_xml: str) -> Optional[bytes]:
+    """
+    Read the comprobante's XML, from wherever it actually lives.
+
+    ruta_xml is either a leftover local disk path (only ever valid inside the
+    same container run that downloaded it — Railway's disk is ephemeral) or,
+    for anything that made it through sire_bot_orchestrator.py's upload step,
+    a path inside the 'comprobantes-fisicos' Storage bucket. Try local first
+    since it's cheaper, then fall back to Storage — that fallback is what was
+    missing before, which made this whole function silently skip almost
+    every comprobante once its ruta_xml pointed at Storage instead of disk.
+    """
+    local_path = Path(ruta_xml)
+    if local_path.exists():
+        try:
+            return _extract_xml_from_zip_bytes(local_path.read_bytes())
+        except Exception as e:
+            print(f"  [ERROR] No se pudo leer {ruta_xml} del disco: {e}")
             return None
-        else:
-            return xml_path.read_bytes()
+
+    try:
+        raw = supabase.storage.from_(STORAGE_BUCKET).download(ruta_xml)
     except Exception as e:
-        print(f"  [ERROR] No se pudo leer {xml_path}: {e}")
+        print(f"  [ERROR] XML no encontrado ni en disco ni en Storage ({ruta_xml}): {e}")
+        return None
+    return _extract_xml_from_zip_bytes(raw)
+
+
+def _upload_pdf_to_storage(supabase, local_pdf_path: str, cliente_id: str, periodo: str, tipo_libro: str, filename: str) -> Optional[str]:
+    """
+    Uploads a freshly generated PDF to the same Storage bucket the XMLs live
+    in, so it survives past this container's lifetime. Returns the Storage
+    path on success, None if the upload failed (caller keeps the local path
+    as a same-session-only fallback rather than losing the record entirely).
+    """
+    try:
+        content = Path(local_pdf_path).read_bytes()
+        storage_path = f"{cliente_id}/{periodo}/{tipo_libro}/{filename}"
+        supabase.storage.from_(STORAGE_BUCKET).upload(
+            path=storage_path,
+            file=content,
+            file_options={"content-type": "application/pdf", "upsert": "true"},
+        )
+        return storage_path
+    except Exception as e:
+        print(f"  [WARN] No se pudo subir {local_pdf_path} a Storage: {e}")
         return None
 
 
@@ -177,6 +245,7 @@ async def generate_pdfs_from_xmls(
 
     # ── 3. Prepare HTML render jobs ──────────────────────────────
     template = jinja_env.get_template("invoice_template.html")
+    _TMP_PDF_DIR.mkdir(parents=True, exist_ok=True)
     jobs: list[tuple[str, str]] = []  # (html, output_path)
     job_record_map: list[dict] = []   # parallel list of DB records
 
@@ -184,45 +253,21 @@ async def generate_pdfs_from_xmls(
     parse_errors = 0
 
     for rec in records:
-        xml_path = Path(rec["ruta_xml"])
+        # Local temp path keyed by the record's own id - independent of
+        # whatever shape ruta_xml has (local leftover path or Storage path),
+        # since the previous folder-mirroring logic silently broke as soon
+        # as ruta_xml pointed at Storage instead of a real local directory.
+        pdf_output = _TMP_PDF_DIR / f"{rec['id']}.pdf"
 
-        if not xml_path.exists():
-            print(f"  [SKIP] XML no encontrado en disco: {xml_path}")
-            skipped += 1
-            continue
-
-        # Determine output PDF path (same directory structure, in /pdf/ subfolder)
-        # Current XML path: downloads/xml/{client}/{period}/{book}/xml/{file}.xml
-        # Target PDF path:  downloads/xml/{client}/{period}/{book}/pdf/{file}.pdf
-        xml_parent = xml_path.parent  # .../xml/
-        book_dir = xml_parent.parent  # .../{book}/
-        pdf_dir = book_dir / "pdf"
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-
-        pdf_filename = xml_path.stem + ".pdf"
-        pdf_output = pdf_dir / pdf_filename
-
-        # Skip if PDF already exists on disk
-        if pdf_output.exists():
-            print(f"  [SKIP] PDF ya existe: {pdf_output.name}")
-            # Still update DB to mark it as downloaded
-            supabase.table("sire_comprobantes_fisicos").update({
-                "ruta_pdf": str(pdf_output),
-                "estado_pdf": "DESCARGADO",
-            }).eq("id", rec["id"]).execute()
-            skipped += 1
-            continue
-
-        # Read and parse XML
-        xml_bytes = _read_xml_bytes(xml_path)
+        xml_bytes = _load_xml_bytes(supabase, rec["ruta_xml"])
         if not xml_bytes:
-            print(f"  [ERROR] No se pudo leer XML: {xml_path.name}")
-            parse_errors += 1
+            print(f"  [SKIP] XML no encontrado ni en disco ni en Storage: {rec['ruta_xml']}")
+            skipped += 1
             continue
 
         data = parse_sunat_xml(xml_bytes)
         if not data:
-            print(f"  [ERROR] No se pudo parsear XML: {xml_path.name}")
+            print(f"  [ERROR] No se pudo parsear XML de {rec['serie']}-{rec['numero']}")
             parse_errors += 1
             continue
 
@@ -239,23 +284,41 @@ async def generate_pdfs_from_xmls(
     print(f"\nGenerando {len(jobs)} PDFs con Playwright (instancia compartida)...")
     results = await _batch_html_to_pdf(jobs)
 
-    # ── 5. Update database ───────────────────────────────────────
+    # ── 5. Upload each generated PDF to Storage and update database ──
     generated = 0
     gen_errors = 0
 
     for (html, output_path), rec in zip(jobs, job_record_map):
         error = results.get(output_path)
         if error is None:
-            # Success
+            # Success - upload to the same bucket the XMLs live in so the
+            # PDF survives past this container's ephemeral disk. Falls back
+            # to the local path only if the upload itself fails.
+            pdf_filename = f"{rec['serie']}-{rec['numero']}.pdf"
+            uploaded_path = _upload_pdf_to_storage(
+                supabase, output_path, rec["cliente_id"], rec["periodo"], rec["tipo_libro"], pdf_filename
+            )
+            stored_path = uploaded_path or output_path
+
             supabase.table("sire_comprobantes_fisicos").update({
-                "ruta_pdf": output_path,
+                "ruta_pdf": stored_path,
                 "estado_pdf": "DESCARGADO",
             }).eq("id", rec["id"]).execute()
+
+            # Only delete the local temp copy once it's safely in Storage -
+            # if the upload failed, ruta_pdf still points at this local file
+            # and it needs to stay put for the rest of this container's life.
+            if uploaded_path:
+                try:
+                    os.remove(output_path)
+                except OSError:
+                    pass
+
             generated += 1
-            print(f"  [OK] {Path(output_path).name}")
+            print(f"  [OK] {pdf_filename}")
         else:
             gen_errors += 1
-            print(f"  [ERROR] {Path(output_path).name}: {error}")
+            print(f"  [ERROR] {rec['serie']}-{rec['numero']}: {error}")
 
     total_errors = parse_errors + gen_errors
 

@@ -1194,7 +1194,18 @@ async def run_batch(
         queries_by_client[q.ruc_cliente].append(q)
 
     async with async_playwright() as p:
-        tmp_downloads_dir = out_base / "tmp_downloads"
+        # BUGFIX: proceso-especifico (PID), no compartido. Antes esto era
+        # siempre out_base/"tmp_downloads" para TODOS los clientes; con
+        # concurrency>1 en daily_sync.py, varios subprocesos de
+        # sire_bot_orchestrator.py corren en paralelo y cada uno lanza su
+        # propio Chromium apuntando a esa MISMA carpeta compartida. La
+        # heuristica de "que archivo nuevo aparecio despues del click" en
+        # _search_individual entonces podia recoger el archivo de OTRO
+        # cliente que llegara casi al mismo tiempo, subiendolo con el
+        # nombre/extension equivocado (ej. un PDF terminando guardado bajo
+        # la ruta que se registra como XML). Con PID cada proceso tiene su
+        # propia carpeta y nunca se cruzan.
+        tmp_downloads_dir = out_base / "tmp_downloads" / f"pid{os.getpid()}"
         tmp_downloads_dir.mkdir(parents=True, exist_ok=True)
         browser = await p.chromium.launch(headless=headless, downloads_path=str(tmp_downloads_dir))
         
