@@ -413,7 +413,7 @@ def _sniff_content_type(path) -> str:
     """
     try:
         with open(path, "rb") as f:
-            head = f.read(8)
+            head = f.read(16)
     except Exception:
         return "unknown"
     if head.startswith(b"%PDF"):
@@ -421,6 +421,12 @@ def _sniff_content_type(path) -> str:
     if head.startswith(b"PK\x03\x04"):
         return "zip"
     stripped = head.lstrip()
+    # Muchos XML reales de SUNAT traen BOM UTF-8 (b'\xef\xbb\xbf') antes de
+    # '<?xml ...'. bytes.lstrip() no lo quita (no es whitespace ASCII), asi
+    # que hay que despojarlo explicitamente o un XML valido se clasifica
+    # como "unknown" y se descarta como si fuera un archivo equivocado.
+    if stripped.startswith(b"\xef\xbb\xbf"):
+        stripped = stripped[3:]
     if stripped.startswith(b"<?xml") or stripped.startswith(b"<"):
         return "xml"
     return "unknown"

@@ -103,8 +103,17 @@ def _looks_like_xml(raw: bytes) -> bool:
     lxml's recover=True mode returns a near-empty tree and the code crashes
     later on a None.find() - so catch it here instead, where the message is
     actually useful.
+
+    IMPORTANT: many genuine SUNAT XMLs start with a UTF-8 BOM (b'\\xef\\xbb\\xbf')
+    before '<?xml ...'. bytes.lstrip() only strips ASCII whitespace, not the
+    BOM, so it must be stripped explicitly here - without this, perfectly
+    valid XMLs get misclassified as corrupt (caught live: a full sweep flagged
+    dozens of BOM-prefixed zipped XMLs as "corrupted" when they were fine).
     """
-    head = raw.lstrip()[:16]
+    head = raw.lstrip()
+    if head.startswith(b"\xef\xbb\xbf"):
+        head = head[3:]
+    head = head[:16]
     return head.startswith(b"<?xml") or head.startswith(b"<")
 
 
