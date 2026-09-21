@@ -43,10 +43,16 @@ def _upload_to_storage(supabase, local_path: str, cliente_id: str, periodo: str,
         print(f"   [WARN] No se pudo subir {local_path} a Supabase Storage: {e}")
         return None
 
-async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xml", headless: bool = False, ruc: str = None, periodo: str = None, tipo_libro: str = None):
+async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xml", headless: bool = False, ruc: str = None, periodo: str = None, tipo_libro: str = None, skip_pdf: bool = False):
     """
     Busca comprobantes físicos pendientes en la base de datos, extrae la data preliminar
     requerida (monto, fecha) y orquesta la descarga usando el scraper de Playwright.
+
+    skip_pdf: si True, omite la generación automática de PDFs al final (usado por
+    daily_sync.py Fase 1, que la corre una sola vez de forma global para todos los
+    clientes en su propia Fase 2 en vez de repetirla por cliente). El disparo manual
+    desde el frontend ("Descargar Físicos") sigue generando el PDF de inmediato como
+    siempre, dejando skip_pdf en False.
     """
     supabase = get_supabase()
     
@@ -261,18 +267,21 @@ async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xm
         
         # AUTO-GENERATE PDFs: Generar PDFs desde los XMLs recién descargados
         # Esto reemplaza la descarga lenta de PDFs desde el portal de SUNAT.
-        print("\nGenerando PDFs desde XMLs descargados...")
-        try:
-            from app.brain.services.pdf_from_xml_service import generate_pdfs_from_xmls
-            pdf_result = await generate_pdfs_from_xmls(
-                ruc=ruc,
-                periodo=periodo,
-                tipo_libro=tipo_libro,
-                limit=limit,
-            )
-            print(f"PDFs generados: {pdf_result.get('generated', 0)}, Errores: {pdf_result.get('errors', 0)}")
-        except Exception as pdf_err:
-            print(f"Advertencia: generación de PDFs falló: {pdf_err}")
+        if skip_pdf:
+            print("\n[skip-pdf] Generación de PDFs omitida (se hará globalmente más adelante).")
+        else:
+            print("\nGenerando PDFs desde XMLs descargados...")
+            try:
+                from app.brain.services.pdf_from_xml_service import generate_pdfs_from_xmls
+                pdf_result = await generate_pdfs_from_xmls(
+                    ruc=ruc,
+                    periodo=periodo,
+                    tipo_libro=tipo_libro,
+                    limit=limit,
+                )
+                print(f"PDFs generados: {pdf_result.get('generated', 0)}, Errores: {pdf_result.get('errors', 0)}")
+            except Exception as pdf_err:
+                print(f"Advertencia: generación de PDFs falló: {pdf_err}")
         
     except Exception as e:
         print(f"Error catastrófico en la orquestación: {e}")
@@ -285,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("--ruc", type=str, help="RUC de la empresa para filtrar")
     parser.add_argument("--periodo", type=str, help="Periodo a descargar (ej: 202604)")
     parser.add_argument("--tipo_libro", type=str, help="Tipo de libro a filtrar (COMPRAS o VENTAS)")
+    parser.add_argument("--skip-pdf", action="store_true", help="Omitir la generación automática de PDFs al final")
     args = parser.parse_args()
-    
-    asyncio.run(orchestrate_xml_downloads(limit=args.limit, headless=args.headless, ruc=args.ruc, periodo=args.periodo, tipo_libro=args.tipo_libro))
+
+    asyncio.run(orchestrate_xml_downloads(limit=args.limit, headless=args.headless, ruc=args.ruc, periodo=args.periodo, tipo_libro=args.tipo_libro, skip_pdf=args.skip_pdf))

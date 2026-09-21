@@ -174,7 +174,7 @@ def _process_client_download_only(
             "2-DESCARGA-XMLs",
             [python, "app/brain/db/sire_bot_orchestrator.py",
              "--headless", "--limit", str(config.xml_download_limit),
-             "--ruc", client_ruc, "--periodo", periodo],
+             "--ruc", client_ruc, "--periodo", periodo, "--skip-pdf"],
             cwd, client_log,
             timeout=config.step_timeout_seconds,
         )
