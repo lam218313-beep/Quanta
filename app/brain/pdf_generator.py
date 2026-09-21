@@ -74,33 +74,49 @@ def parse_sunat_xml(xml_bytes: bytes) -> Dict[str, Any]:
             el = root.find(path, ns)
             return el.get(attr) if el is not None else ""
 
+        def _extract_address(party_el) -> str:
+            """
+            SUNAT XMLs disagree on where the address lives depending on the
+            issuer's invoicing software: some put itemized fields under
+            cac:PostalAddress (StreetName/District/CityName/CountrySubentity),
+            others only give a pre-formatted single line under
+            cac:PartyLegalEntity/cac:RegistrationAddress/cac:AddressLine/cbc:Line.
+            Checked live against real downloaded XMLs: PostalAddress is often
+            entirely absent, which silently left the address blank before this
+            fallback - try the itemized form first (matches SUNAT's own
+            "Street District - City - Department" rendering), then fall back
+            to the ready-made AddressLine text.
+            """
+            if party_el is None:
+                return ""
+
+            postal = party_el.find("cac:PostalAddress", ns)
+            if postal is not None:
+                street = postal.find("cbc:StreetName", ns)
+                dist = postal.find("cbc:District", ns)
+                city = postal.find("cbc:CityName", ns)
+                dept = postal.find("cbc:CountrySubentity", ns)
+                direccion = f"{street.text if street is not None else ''} {dist.text if dist is not None else ''} - {city.text if city is not None else ''} - {dept.text if dept is not None else ''}".strip(' -')
+                if direccion:
+                    return direccion
+
+            line = party_el.find(
+                "cac:PartyLegalEntity/cac:RegistrationAddress/cac:AddressLine/cbc:Line", ns
+            )
+            if line is not None and line.text:
+                return line.text.strip()
+
+            return ""
+
         # Extract Emisor
         emisor_ruc = get(".//cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID")
         emisor_razon = get(".//cac:AccountingSupplierParty/cac:Party/cac:PartyName/cbc:Name") or get(".//cac:AccountingSupplierParty/cac:Party/cac:PartyLegalEntity/cbc:RegistrationName")
-        
-        em_dir = root.find(".//cac:AccountingSupplierParty/cac:Party/cac:PostalAddress", ns)
-        if em_dir is not None:
-            street = em_dir.find("cbc:StreetName", ns)
-            dist = em_dir.find("cbc:District", ns)
-            city = em_dir.find("cbc:CityName", ns)
-            dept = em_dir.find("cbc:CountrySubentity", ns)
-            direccion_emisor = f"{street.text if street is not None else ''} {dist.text if dist is not None else ''} - {city.text if city is not None else ''} - {dept.text if dept is not None else ''}".strip(' -')
-        else:
-            direccion_emisor = ""
-        
+        direccion_emisor = _extract_address(root.find(".//cac:AccountingSupplierParty/cac:Party", ns))
+
         # Extract Receptor
         receptor_ruc = get(".//cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID")
         receptor_razon = get(".//cac:AccountingCustomerParty/cac:Party/cac:PartyLegalEntity/cbc:RegistrationName")
-        
-        rec_dir = root.find(".//cac:AccountingCustomerParty/cac:Party/cac:PostalAddress", ns)
-        if rec_dir is not None:
-            street = rec_dir.find("cbc:StreetName", ns)
-            dist = rec_dir.find("cbc:District", ns)
-            city = rec_dir.find("cbc:CityName", ns)
-            dept = rec_dir.find("cbc:CountrySubentity", ns)
-            direccion_receptor = f"{street.text if street is not None else ''} {dist.text if dist is not None else ''} - {city.text if city is not None else ''} - {dept.text if dept is not None else ''}".strip(' -')
-        else:
-            direccion_receptor = ""
+        direccion_receptor = _extract_address(root.find(".//cac:AccountingCustomerParty/cac:Party", ns))
 
         # Comprobante
         tipo_doc = get(".//cbc:InvoiceTypeCode")
