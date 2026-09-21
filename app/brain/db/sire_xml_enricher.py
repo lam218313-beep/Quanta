@@ -8,7 +8,8 @@ if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
 from app.brain.db.supabase_client import get_supabase
-from app.brain.sire_xml_matcher import _extract_from_xml
+from app.brain.sire_xml_matcher import _extract_from_xml_string
+from app.brain.services.pdf_from_xml_service import _load_xml_bytes
 
 def enrich_preliminary_data(limit: int = 500, ruc: str = None, periodo: str = None):
     """
@@ -77,28 +78,33 @@ def enrich_preliminary_data(limit: int = 500, ruc: str = None, periodo: str = No
     
     for r in to_enrich:
         ruta_xml = r.get("ruta_xml")
-        xml_path = Path(ruta_xml)
-        
+
         is_compra = (r["tipo_libro"] == "COMPRAS")
         preliminar_id = r["preliminar_compra_id"] if is_compra else r["preliminar_venta_id"]
         table_name = "sire_preliminar_compras" if is_compra else "sire_preliminar_ventas"
-        
-        if not xml_path.exists():
-            print(f"Advertencia: Archivo XML no encontrado en disco: {ruta_xml}")
+
+        # ruta_xml points either at a leftover local path (only valid inside
+        # the same container run) or, for anything uploaded properly, a
+        # Storage path — same fallback used in pdf_from_xml_service.py, since
+        # this had the identical local-disk-only bug before this fix.
+        xml_bytes = _load_xml_bytes(supabase, ruta_xml)
+
+        if not xml_bytes:
+            print(f"Advertencia: XML no encontrado ni en disco ni en Storage: {ruta_xml}")
             # Mark as ERROR in enrichment so we don't infinitely retry unless reset
             supabase.table(table_name) \
                 .update({"estado_enriquecimiento": "ERROR"}) \
                 .eq("id", preliminar_id) \
                 .execute()
             continue
-            
+
         try:
-            info = _extract_from_xml(xml_path)
-            
+            info = _extract_from_xml_string(xml_bytes)
+
             if info:
                 desc_text = "; ".join(info.get("descriptions", []))
                 detraccion = info.get("detraccion", "NO")
-                
+
                 # Update preliminary table
                 supabase.table(table_name) \
                     .update({
@@ -108,15 +114,15 @@ def enrich_preliminary_data(limit: int = 500, ruc: str = None, periodo: str = No
                     }) \
                     .eq("id", preliminar_id) \
                     .execute()
-                    
-                print(f"Enriquecido {xml_path.name}: {desc_text[:50]}...")
+
+                print(f"Enriquecido {Path(ruta_xml).name}: {desc_text[:50]}...")
             else:
-                print(f"Advertencia: No se pudo extraer info de {xml_path.name}")
+                print(f"Advertencia: No se pudo extraer info de {Path(ruta_xml).name}")
                 supabase.table(table_name) \
                     .update({"estado_enriquecimiento": "ERROR"}) \
                     .eq("id", preliminar_id) \
                     .execute()
-                    
+
         except Exception as e:
             print(f"Error al procesar {ruta_xml}: {e}")
             

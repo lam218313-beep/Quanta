@@ -401,6 +401,42 @@ async def _setup_filters_and_search(frame, *, ruc: str, fecha_desde: str, fecha_
 # Core: search-and-download for a single CPE via the individual query form
 # ---------------------------------------------------------------------------
 
+def _sniff_content_type(path) -> str:
+    """
+    Determina el tipo real de un archivo por sus primeros bytes, en vez de
+    confiar en la extension que Chromium le puso al descargarlo. Encontramos
+    comprobantes reales cuya ruta_xml en Storage en realidad contenia un PDF
+    (~una condicion de carrera al recuperar la descarga mas reciente en la
+    carpeta temporal, agravada por corridas concurrentes) - este chequeo es
+    lo que impide que ese archivo equivocado se guarde bajo la etiqueta
+    incorrecta la proxima vez, sin importar la causa exacta de la carrera.
+    """
+    try:
+        with open(path, "rb") as f:
+            head = f.read(8)
+    except Exception:
+        return "unknown"
+    if head.startswith(b"%PDF"):
+        return "pdf"
+    if head.startswith(b"PK\x03\x04"):
+        return "zip"
+    stripped = head.lstrip()
+    if stripped.startswith(b"<?xml") or stripped.startswith(b"<"):
+        return "xml"
+    return "unknown"
+
+
+def _content_matches_expected(file_type: str, sniffed: str) -> bool:
+    """True si el contenido detectado es compatible con lo que este target esperaba."""
+    if file_type == "fallback":
+        return True
+    if file_type == "xml":
+        return sniffed in ("xml", "zip")
+    if file_type == "pdf":
+        return sniffed == "pdf"
+    return True
+
+
 async def _search_individual(
     *,
     page,
@@ -1007,14 +1043,18 @@ async def _search_individual(
             existing_in_tmp = set()
             if tmp_downloads_dir and tmp_downloads_dir.exists():
                 existing_in_tmp = {f.name for f in tmp_downloads_dir.glob("*")}
-            
+            # Archivos que ya sniffeamos y NO correspondian a este target
+            # (ver _sniff_content_type mas arriba) - se excluyen de las
+            # siguientes iteraciones para no volver a considerarlos "nuevos".
+            rejected_files: set[str] = set()
+
             # AUMENTAMOS EL TIMEOUT A 30 SEGUNDOS (30000ms) PORQUE SUNAT ES LENTO CON LOS ZIP
             download_task = asyncio.ensure_future(
                 page.context.wait_for_event("download", timeout=30000)
             )
 
             await target.click()
-            
+
             # Check for the warning modal "El archivo se ha descargado previamente"
             try:
                 accept_btn = frame.locator("button:has-text('Aceptar'), .swal2-confirm")
@@ -1022,31 +1062,50 @@ async def _search_individual(
                     await accept_btn.first.click(timeout=2000)
             except Exception:
                 pass
-                
+
             # Active polling loop for Chromium silent downloads
             recovered = False
             start_wait = time.time()
-            
+
             # AUMENTAMOS EL BUCLE A 30 SEGUNDOS
-            while time.time() - start_wait < 30: 
+            while time.time() - start_wait < 30:
                 if download_task.done() and not download_task.cancelled() and not isinstance(download_task.exception(), Exception):
                     break # The official download event fired!
-                    
+
                 if tmp_downloads_dir and tmp_downloads_dir.exists():
                     files = list(tmp_downloads_dir.glob("*"))
                     # KEY FIX: Only consider files that WEREN'T there before we clicked
-                    new_files = [f for f in files if f.name not in existing_in_tmp]
+                    new_files = [f for f in files if f.name not in existing_in_tmp and f.name not in rejected_files]
                     if new_files:
                         new_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
                         newest = new_files[0]
                         # Check: not a temp file, and size > 1KB (fully written)
                         file_stat = newest.stat()
                         if not newest.name.endswith('.crdownload') and file_stat.st_size > 1024:
-                            
-                            # SOLUCIÓN: Detectar la extensión real (sea .zip, .xml, o .pdf)
-                            ext_real = newest.suffix.lower()
-                            if not ext_real or ext_real == '.bin':
-                                ext_real = f".{file_type}" if file_type != "fallback" else ".pdf"
+
+                            # VERIFICACION DE CONTENIDO REAL: no confiar en la extension
+                            # (Chromium puede recuperar el archivo equivocado si dos
+                            # descargas caen en la misma carpeta casi al mismo tiempo).
+                            sniffed = _sniff_content_type(newest)
+                            if not _content_matches_expected(file_type, sniffed):
+                                print(f"   [content-mismatch] Se esperaba '{file_type}' pero el archivo "
+                                      f"recuperado es '{sniffed}' ({newest.name}) - descartando y reintentando...")
+                                rejected_files.add(newest.name)
+                                await asyncio.sleep(1)
+                                continue
+
+                            # Extension real basada en el CONTENIDO detectado, no en el
+                            # nombre que le puso Chromium (que puede ser incorrecto).
+                            if sniffed == "pdf":
+                                ext_real = ".pdf"
+                            elif sniffed == "zip":
+                                ext_real = ".zip"
+                            elif sniffed == "xml":
+                                ext_real = ".xml"
+                            else:
+                                ext_real = newest.suffix.lower()
+                                if not ext_real or ext_real == '.bin':
+                                    ext_real = f".{file_type}" if file_type != "fallback" else ".pdf"
 
                             # Rutear a la carpeta correcta basado en la extensión real
                             if ext_real in (".xml", ".zip"):
@@ -1097,20 +1156,40 @@ async def _search_individual(
                     ext = f".{file_type}"
                     
                 ext_lower = ext.lower()
-                
-                # Rutear a la carpeta correcta
+
+                # Rutear a la carpeta correcta (provisional, basado en la extensión
+                # sugerida por SUNAT - se corrige abajo si el contenido real dice otra cosa)
                 if ext_lower in (".xml", ".zip"):
                     subfolder = "xml"
                 elif ext_lower == ".pdf":
                     subfolder = "pdf"
                 else:
                     subfolder = "pdf" if file_type in ("pdf", "fallback") else "xml"
-                    
+
                 final_dir = out_dir / subfolder
                 final_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 final_path = final_dir / f"{base_name}{ext}"
                 await download.save_as(str(final_path))
+
+                # VERIFICACION DE CONTENIDO REAL: aunque este es el evento oficial
+                # de Playwright para nuestro propio click (menos propenso a mezclarse
+                # con otra descarga que la recuperacion activa de arriba), igual
+                # confirmamos con los bytes reales en vez de solo confiar en el
+                # nombre sugerido, y reubicamos si no coincide.
+                sniffed = _sniff_content_type(final_path)
+                if sniffed != "unknown" and not _content_matches_expected(file_type, sniffed):
+                    correct_subfolder = "pdf" if sniffed == "pdf" else "xml"
+                    correct_ext = ".pdf" if sniffed == "pdf" else (".zip" if sniffed == "zip" else ".xml")
+                    if correct_subfolder != subfolder or correct_ext != ext_lower:
+                        print(f"   [content-mismatch] Descarga oficial de '{file_type}' resultó ser '{sniffed}' "
+                              f"- reubicando {final_path.name}")
+                        corrected_dir = out_dir / correct_subfolder
+                        corrected_dir.mkdir(parents=True, exist_ok=True)
+                        corrected_path = corrected_dir / f"{base_name}{correct_ext}"
+                        final_path.replace(corrected_path)
+                        final_path = corrected_path
+
                 downloaded_paths.append(final_path)
                 print(f"   Downloaded officially: {final_path.name}")
                 await asyncio.sleep(0.5)
