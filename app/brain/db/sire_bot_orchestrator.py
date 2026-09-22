@@ -240,11 +240,25 @@ async def orchestrate_xml_downloads(limit: int = 50, outdir: str = "downloads/xm
                 update_data["estado_xml"] = "PENDIENTE"
                 update_data["error_log"] = "No encontrado en SUNAT"
             elif status == "no_descargable":
-                # El comprobante EXISTE en SUNAT pero no tiene boton XML/PDF
-                # Estado terminal: no reintentar jamas
-                update_data["estado_xml"] = "NO_DESCARGABLE"
-                update_data["estado_pdf"] = "NO_DESCARGABLE"
-                update_data["error_log"] = "Comprobante existe en SUNAT pero sin boton de descarga (fisico/contingente/aduanas)"
+                # El comprobante EXISTE en SUNAT pero este intento no encontro
+                # boton XML/PDF. Antes esto era terminal de inmediato ("no
+                # reintentar jamas"), pero un solo intento no distingue un caso
+                # genuino (fisico/contingente/aduanas) de un miss transitorio
+                # (SUNAT lento, timing de selectors, variante de modal no
+                # reconocida) - verificado en produccion: de 125 comprobantes
+                # electronicos marcados NO_DESCARGABLE en un periodo, 113
+                # habian llegado ahi con menos de 10 intentos, 12 en el primer
+                # intento. Ahora se le da el mismo presupuesto de reintentos
+                # que al resto de fallos (ver cementerio de reintentos>=10
+                # arriba) antes de considerarlo realmente terminal.
+                current_reintentos = db_record.get("reintentos", 0) + 1
+                if current_reintentos >= 10:
+                    update_data["estado_xml"] = "NO_DESCARGABLE"
+                    update_data["estado_pdf"] = "NO_DESCARGABLE"
+                    update_data["error_log"] = "Comprobante existe en SUNAT pero sin boton de descarga tras 10 intentos"
+                else:
+                    update_data["estado_xml"] = "PENDIENTE"
+                    update_data["error_log"] = "Sin boton de descarga en este intento (reintentando)"
             else:
                 update_data["estado_xml"] = "PENDIENTE"
                 update_data["error_log"] = res.get("error", "Error desconocido")
