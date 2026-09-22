@@ -49,6 +49,38 @@ def _safe_remove_file(path: str) -> None:
         pass
 
 
+_STORAGE_BUCKET = "comprobantes-fisicos"
+
+
+def _load_pdf_bytes(supabase, ruta_pdf: str) -> bytes | None:
+    """
+    Read a comprobante's PDF from wherever it actually lives.
+
+    ruta_pdf is either a leftover local disk path (only ever valid inside the
+    same container run that generated it - Railway's disk is ephemeral and
+    every redeploy wipes it) or, for anything that made it through
+    sire_bot_orchestrator.py's / pdf_from_xml_service.py's upload step, a
+    path inside the 'comprobantes-fisicos' Storage bucket. This endpoint used
+    to only ever check os.path.exists(ruta_pdf), which is why every compilado
+    request failed with "Ningun comprobante tiene un PDF valido" once PDFs
+    started being stored in Storage instead of on disk.
+    """
+    if not ruta_pdf:
+        return None
+
+    local_path = Path(ruta_pdf)
+    if local_path.exists():
+        try:
+            return local_path.read_bytes()
+        except Exception:
+            return None
+
+    try:
+        return supabase.storage.from_(_STORAGE_BUCKET).download(ruta_pdf)
+    except Exception:
+        return None
+
+
 @router.post("/pdf-merged")
 def export_pdf_merged(req: ExportPdfRequest, background_tasks: BackgroundTasks):
     supabase = get_supabase()
@@ -75,12 +107,13 @@ def export_pdf_merged(req: ExportPdfRequest, background_tasks: BackgroundTasks):
             serie = comp.get("serie", "N/A")
             numero = comp.get("numero", "N/A")
 
-            if not pdf_path or not os.path.exists(pdf_path):
+            pdf_bytes = _load_pdf_bytes(supabase, pdf_path)
+            if not pdf_bytes:
                 failed_comprobantes.append(comp)
                 continue
 
             try:
-                doc = fitz.open(pdf_path)
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
                 merged_doc.insert_pdf(doc)
                 doc.close()
             except Exception as e:
