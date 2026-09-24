@@ -5,6 +5,7 @@ import './App.css'
 import FacturacionView from './components/FacturacionView'
 import LoginView from './components/LoginView'
 import DashboardView from './components/DashboardView'
+import AdminOverviewView from './components/AdminOverviewView'
 import PeriodSelector from './components/PeriodSelector'
 import PropuestaView from './components/PropuestaView'
 import ComprasView from './components/ComprasView'
@@ -572,13 +573,22 @@ function App() {
           {/* Main tab navigation */}
           <div className="menu-label">Menu</div>
           <div className="main-tabs-container">
-            <button 
+            <button
               className={`main-tab-btn ${activeMainTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => setActiveMainTab('dashboard')}
             >
               <BarChart2 size={18} />
               <span>Dashboard</span>
             </button>
+            {userRole === 'admin' && (
+              <button
+                className={`main-tab-btn ${activeMainTab === 'resumen-general' ? 'active' : ''}`}
+                onClick={() => setActiveMainTab('resumen-general')}
+              >
+                <Building2 size={18} />
+                <span>Resumen General</span>
+              </button>
+            )}
             <button 
               className={`main-tab-btn ${activeMainTab === 'propuesta' ? 'active' : ''}`}
               onClick={() => setActiveMainTab('propuesta')}
@@ -713,6 +723,8 @@ function App() {
             <ExportacionView currentClient={currentClient} selectedPeriodo={selectedPeriodo} />
           ) : activeMainTab === 'clientes' && (userRole === 'admin' || userRole === 'accountant') ? (
             <ClientesView setActiveMainTab={setActiveMainTab} />
+          ) : activeMainTab === 'resumen-general' && userRole === 'admin' ? (
+            <AdminOverviewView selectedPeriodo={selectedPeriodo} />
           ) : activeMainTab === 'dashboard' ? (
             <DashboardView currentClient={currentClient} selectedPeriodo={selectedPeriodo} userRole={userRole} />
           ) : (
