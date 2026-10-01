@@ -85,7 +85,7 @@ export default function ExportacionView({ currentClient, selectedPeriodo }) {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ruc: currentClient.ruc, periodo: selectedPeriodo, tipo_libro: tipoLibro, allow_incomplete: false })
+        body: JSON.stringify({ ruc: currentClient.ruc, periodo: selectedPeriodo, tipo_libro: tipoLibro, allow_incomplete: true })
       },
       `Comprobantes_${tipoLibro}_${selectedPeriodo}.pdf`
     );
