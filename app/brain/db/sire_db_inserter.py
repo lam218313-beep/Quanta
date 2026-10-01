@@ -235,7 +235,16 @@ def _process_row(row: list, records: list, client_id: str, periodo: str, is_comp
                     record[f_col] = f"{parts[2]}-{parts[1]}-{parts[0]}"
                 else:
                     record[f_col] = None
-                    
+
+        # SIRE a veces arrastra en la propuesta de un periodo comprobantes
+        # que en realidad pertenecen a otro mes/año (rectificatorias, registro
+        # tardio, etc.) - row[2] es el periodo propio del comprobante segun
+        # el TXT. Si no coincide con el periodo que efectivamente se solicito
+        # para esta descarga, se descarta: no debe insertarse en preliminar
+        # ni encolarse en sire_comprobantes_fisicos bajo un periodo ajeno.
+        if record["periodo"] != periodo:
+            return
+
         records.append(record)
     except Exception as e:
         print(f"Error mapeando fila: {e}")
